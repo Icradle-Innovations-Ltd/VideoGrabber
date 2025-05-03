@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { extractVideoId } from "@/lib/utils";
+import { extractVideoId, extractPlaylistId, parseYouTubeInput, isPlaylistUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 import { Header } from "@/components/Header";
 import { InputSection } from "@/components/InputSection";
 import { VideoPreview, DownloadOptions } from "@/components/VideoPreview";
+import { PlaylistPreview } from "@/components/PlaylistPreview";
 import { DownloadProgress } from "@/components/DownloadProgress";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { Footer } from "@/components/Footer";
