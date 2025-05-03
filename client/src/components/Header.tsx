@@ -1,42 +1,49 @@
 import { useTheme } from "./ui/theme-provider";
 import { Button } from "./ui/button";
-import { MoonIcon, SunIcon } from "lucide-react";
+import { MoonIcon, SunIcon, Download } from "lucide-react";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
 
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    // Force update document class for immediate visual feedback
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+    } else {
+      document.documentElement.classList.add("light");
+      document.documentElement.classList.remove("dark");
+    }
+  };
+
   return (
-    <header className="bg-white dark:bg-card shadow-sm py-4 sticky top-0 z-10">
+    <header className="bg-white dark:bg-gray-900 shadow-sm py-4 sticky top-0 z-10">
       <div className="container mx-auto px-4 md:px-6 flex justify-between items-center">
         <div className="flex items-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-7 w-7 text-primary"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <Download className="h-6 w-6 text-red-600" />
           <h1 className="ml-2 text-xl font-bold">YouTube Downloader</h1>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-          className="rounded-full"
-        >
-          {theme === "light" ? (
-            <MoonIcon className="h-5 w-5" />
-          ) : (
-            <SunIcon className="h-5 w-5" />
-          )}
-          <span className="sr-only">Toggle theme</span>
-        </Button>
+        <div className="flex items-center gap-3">
+          <span className="text-sm hidden md:inline">
+            {theme === "dark" ? "Dark Mode" : "Light Mode"}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleTheme}
+            className="rounded-full h-9 w-9 p-0"
+          >
+            {theme === "light" ? (
+              <MoonIcon className="h-5 w-5" />
+            ) : (
+              <SunIcon className="h-5 w-5" />
+            )}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+        </div>
       </div>
     </header>
   );

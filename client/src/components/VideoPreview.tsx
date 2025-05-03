@@ -127,9 +127,14 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
   };
 
   const getFormatLabel = (format: Format) => {
-    if (format.hasVideo) {
-      return `${format.extension.toUpperCase()} - ${format.qualityLabel || format.quality}`;
+    if (format.hasVideo && format.hasAudio) {
+      // Video with audio
+      return `${format.extension.toUpperCase()} - ${format.qualityLabel || format.quality} with Audio`;
+    } else if (format.hasVideo) {
+      // Video only
+      return `${format.extension.toUpperCase()} - ${format.qualityLabel || format.quality} (Video Only)`;
     } else {
+      // Audio only
       return `${format.extension.toUpperCase()} - Audio Only ${format.audioChannels ? `(${format.audioChannels}ch)` : ''}`;
     }
   };
@@ -184,11 +189,22 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                         format.filesize > 0
                       )
                       .sort((a, b) => {
-                        // Sort by type (video first), then by filesize (larger first)
-                        if (a.hasVideo !== b.hasVideo) return a.hasVideo ? -1 : 1;
+                        // First group by type - video with audio, video only, audio only
+                        if (a.hasVideo && a.hasAudio && !(b.hasVideo && b.hasAudio)) return -1;
+                        if (b.hasVideo && b.hasAudio && !(a.hasVideo && a.hasAudio)) return 1;
+                        
+                        // Then for videos, sort by resolution (quality)
+                        if (a.hasVideo && b.hasVideo) {
+                          // Extract resolution numbers for comparison
+                          const aRes = a.qualityLabel ? parseInt(a.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
+                          const bRes = b.qualityLabel ? parseInt(b.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
+                          return bRes - aRes; // Higher resolution first
+                        }
+                        
+                        // For audio only, sort by filesize
                         return (b.filesize || 0) - (a.filesize || 0);
                       })
-                      .slice(0, 6) // Limit to 6 formats
+                      // Show more formats
                       .map((format) => (
                         <div
                           key={format.formatId}
