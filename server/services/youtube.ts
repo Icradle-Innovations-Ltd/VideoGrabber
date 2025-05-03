@@ -228,83 +228,217 @@ export async function downloadVideo(options: DownloadOptions): Promise<Readable>
     fs.mkdirSync(tempDir, { recursive: true });
   }
   
-  // Create a pass-through stream to handle errors
+  // Create a unique temporary file path for this download
+  const tempFilePath = path.join(tempDir, `${videoId}_${formatId}_${Date.now()}.temp`);
+  
+  // Create a pass-through stream to handle errors and the final output
   const outputStream = new PassThrough();
   
-  // Build yt-dlp arguments with additional options to bypass restrictions
-  const args = [
-    "--no-playlist",
-    "-f", formatId,
-    "-o", "-", // Output to stdout
-    "--force-ipv4", // Force IPv4 to avoid some restrictions
-    "--geo-bypass", // Try to bypass geo-restrictions
-    "--extractor-retries", "3", // Retry 3 times if extraction fails
-    "--no-check-certificates", // Don't verify SSL certificates
-  ];
-  
-  // Add trim options if present
-  if (start !== undefined && end !== undefined) {
-    args.push("--download-sections", `*${start}-${end}`);
-  }
-  
-  // Add subtitle options if present
-  if (subtitle && subtitleFormat) {
-    args.push("--write-subs");
-    args.push("--sub-langs", subtitle);
-    args.push("--sub-format", subtitleFormat);
-  }
-  
-  // Add the URL as the last argument
-  args.push(url);
-  
-  console.log("Starting download with args:", args.join(" "));
-  
-  // Spawn yt-dlp process
-  const ytDlp = spawn("yt-dlp", args);
-  
-  let errorMessage = "";
-  
-  // Handle errors
-  ytDlp.stderr.on("data", (data) => {
-    const message = data.toString();
-    errorMessage += message;
-    console.error(`yt-dlp stderr: ${message}`);
+  // Try different methods to download the video
+  // Method 1: First try direct download to stdout
+  try {
+    console.log("Attempting direct download method...");
+    await downloadUsingDirectMethod(url, formatId, outputStream, start, end, subtitle, subtitleFormat);
+    return outputStream;
+  } catch (error) {
+    console.log("Direct download failed, trying alternative method...", error);
     
-    // Check for specific errors
-    if (message.includes("HTTP Error 403: Forbidden")) {
-      console.log("YouTube is blocking this download. Trying to work around restrictions...");
-    }
-  });
-  
-  ytDlp.on("error", (error) => {
-    console.error("Failed to start yt-dlp:", error);
-    outputStream.emit("error", new Error(`Download failed: ${error.message}`));
-    outputStream.end();
-  });
-  
-  ytDlp.on("close", (code) => {
-    if (code !== 0) {
-      console.error(`yt-dlp process exited with code ${code}`);
-      
-      // Try to give a more specific error message
-      let userMessage = "Download failed";
-      if (errorMessage.includes("HTTP Error 403: Forbidden")) {
-        userMessage = "YouTube is preventing this download due to restrictions";
-      } else if (errorMessage.includes("This video is unavailable")) {
-        userMessage = "This video is unavailable or private";
-      } else if (errorMessage.includes("Video unavailable")) {
-        userMessage = "This video is unavailable or has been removed";
-      } else if (errorMessage.includes("Sign in to confirm your age")) {
-        userMessage = "This video requires age verification and cannot be downloaded";
-      }
-      
-      outputStream.emit("error", new Error(userMessage));
+    // Method 2: Try downloading to a temporary file first
+    try {
+      await downloadUsingFileMethod(url, formatId, tempFilePath, outputStream, start, end, subtitle, subtitleFormat);
+      return outputStream;
+    } catch (fileError) {
+      console.log("All download methods failed:", fileError);
+      outputStream.emit("error", new Error("YouTube is preventing this download. Try a different format or video."));
       outputStream.end();
+      return outputStream;
     }
+  }
+}
+
+// Method 1: Try direct download to stdout
+async function downloadUsingDirectMethod(
+  url: string, 
+  formatId: string, 
+  outputStream: PassThrough,
+  start?: number,
+  end?: number,
+  subtitle?: string,
+  subtitleFormat?: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Build yt-dlp arguments with additional options to bypass restrictions
+    const args = [
+      "--no-playlist",
+      "-f", formatId,
+      "-o", "-", // Output to stdout
+      "--force-ipv4", // Force IPv4 to avoid some restrictions
+      "--geo-bypass", // Try to bypass geo-restrictions
+      "--extractor-retries", "5", // Retry 5 times if extraction fails
+      "--no-check-certificates", // Don't verify SSL certificates
+      "--prefer-insecure", // Prefer insecure connections
+      "--cookies-from-browser", "chrome", // Try to use chrome cookies
+      "--no-warnings", // Suppress warnings
+    ];
+    
+    // Add trim options if present
+    if (start !== undefined && end !== undefined) {
+      args.push("--download-sections", `*${start}-${end}`);
+    }
+    
+    // Add subtitle options if present
+    if (subtitle && subtitleFormat) {
+      args.push("--write-subs");
+      args.push("--sub-langs", subtitle);
+      args.push("--sub-format", subtitleFormat);
+    }
+    
+    // Add the URL as the last argument
+    args.push(url);
+    
+    console.log("Starting download with args:", args.join(" "));
+    
+    // Spawn yt-dlp process
+    const ytDlp = spawn("yt-dlp", args);
+    
+    let errorMessage = "";
+    let downloadStarted = false;
+    
+    // Handle errors
+    ytDlp.stderr.on("data", (data) => {
+      const message = data.toString();
+      errorMessage += message;
+      console.error(`yt-dlp stderr: ${message}`);
+    });
+    
+    // Handle data (this indicates download is working)
+    ytDlp.stdout.on("data", (data) => {
+      downloadStarted = true;
+      outputStream.write(data);
+    });
+    
+    ytDlp.on("error", (error) => {
+      console.error("Failed to start yt-dlp:", error);
+      reject(new Error(`Download failed: ${error.message}`));
+    });
+    
+    ytDlp.on("close", (code) => {
+      if (code !== 0 || !downloadStarted) {
+        console.error(`yt-dlp process exited with code ${code}`);
+        
+        // Try to give a more specific error message
+        let userMessage = "Download failed";
+        if (errorMessage.includes("HTTP Error 403: Forbidden")) {
+          userMessage = "YouTube is preventing this download due to restrictions";
+        } else if (errorMessage.includes("This video is unavailable")) {
+          userMessage = "This video is unavailable or private";
+        } else if (errorMessage.includes("Video unavailable")) {
+          userMessage = "This video is unavailable or has been removed";
+        } else if (errorMessage.includes("Sign in to confirm your age")) {
+          userMessage = "This video requires age verification and cannot be downloaded";
+        }
+        
+        reject(new Error(userMessage));
+      } else {
+        // Successfully completed
+        outputStream.end();
+        resolve();
+      }
+    });
   });
-  
-  // Pipe the stdout to our passthrough stream
-  ytDlp.stdout.pipe(outputStream);
-  
-  return outputStream;
+}
+
+// Method 2: Download to a temporary file first, then stream it to the client
+async function downloadUsingFileMethod(
+  url: string, 
+  formatId: string, 
+  tempFilePath: string,
+  outputStream: PassThrough,
+  start?: number,
+  end?: number,
+  subtitle?: string,
+  subtitleFormat?: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Build yt-dlp arguments to save to a file
+    const args = [
+      "--no-playlist",
+      "-f", formatId,
+      "--force-ipv4",
+      "--geo-bypass",
+      "--ignore-errors",
+      "--no-check-certificates",
+      "--prefer-insecure",
+      "--cookies-from-browser", "chrome",
+      "--no-warnings"
+    ];
+    
+    // Add trim options if present
+    if (start !== undefined && end !== undefined) {
+      args.push("--download-sections", `*${start}-${end}`);
+    }
+    
+    // Add subtitle options if present
+    if (subtitle && subtitleFormat) {
+      args.push("--write-subs");
+      args.push("--sub-langs", subtitle);
+      args.push("--sub-format", subtitleFormat);
+    }
+    
+    // Add output path and URL
+    args.push("-o", tempFilePath);
+    args.push(url);
+    
+    console.log("Starting file download with args:", args.join(" "));
+    
+    // Spawn yt-dlp process to download to file
+    const ytDlp = spawn("yt-dlp", args);
+    
+    let errorMessage = "";
+    
+    ytDlp.stderr.on("data", (data) => {
+      const message = data.toString();
+      errorMessage += message;
+      console.error(`File download stderr: ${message}`);
+    });
+    
+    ytDlp.on("error", (error) => {
+      console.error("Failed to start file download:", error);
+      reject(new Error(`File download failed: ${error.message}`));
+    });
+    
+    ytDlp.on("close", async (code) => {
+      console.log(`File download process exited with code ${code}`);
+      
+      // Check if the file was created
+      if (fs.existsSync(tempFilePath) && fs.statSync(tempFilePath).size > 0) {
+        try {
+          // Stream the file to the output
+          const fileStream = fs.createReadStream(tempFilePath);
+          fileStream.pipe(outputStream);
+          
+          fileStream.on("end", () => {
+            // Clean up the temporary file
+            try {
+              fs.unlinkSync(tempFilePath);
+            } catch (unlinkError) {
+              console.error("Error deleting temp file:", unlinkError);
+            }
+            outputStream.end();
+            resolve();
+          });
+          
+          fileStream.on("error", (fsError) => {
+            console.error("Error reading temp file:", fsError);
+            reject(new Error("Error reading downloaded file"));
+          });
+        } catch (streamError) {
+          console.error("Error setting up file stream:", streamError);
+          reject(new Error("Error streaming downloaded file"));
+        }
+      } else {
+        reject(new Error(errorMessage || "Failed to download the video"));
+      }
+    });
+  });
 }
