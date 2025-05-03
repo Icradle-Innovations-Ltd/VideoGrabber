@@ -48,7 +48,7 @@ interface PlaylistPreviewProps {
     channel: string;
     formats: VideoFormat[];
     playlistItems?: PlaylistItem[];
-    isPlaylist: boolean;
+    isPlaylist?: boolean;
   } | null;
   isLoading: boolean;
   onDownload: (options: DownloadOptions) => void;

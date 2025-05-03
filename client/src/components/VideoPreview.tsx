@@ -47,6 +47,8 @@ export interface DownloadOptions {
   end?: number;
   subtitle?: string;
   subtitleFormat?: string;
+  isPlaylist?: boolean;
+  playlistItems?: string[];
 }
 
 export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewProps) {

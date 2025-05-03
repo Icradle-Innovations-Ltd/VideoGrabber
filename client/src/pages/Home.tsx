@@ -12,8 +12,42 @@ import { DownloadProgress } from "@/components/DownloadProgress";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { Footer } from "@/components/Footer";
 
+// Define extended VideoInfo type that includes playlist properties
+interface PlaylistItem {
+  id: string;
+  title: string;
+  duration: number;
+  thumbnailUrl: string;
+  position: number;
+}
+
+interface ExtendedVideoInfo {
+  id: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  duration: number;
+  channel: string;
+  formats: Array<{
+    formatId: string;
+    extension: string;
+    quality: string;
+    qualityLabel?: string;
+    hasAudio: boolean;
+    hasVideo: boolean;
+    filesize: number;
+    audioChannels?: number;
+  }>;
+  subtitles: Array<{
+    lang: string;
+    name: string;
+  }>;
+  isPlaylist?: boolean;
+  playlistItems?: PlaylistItem[];
+}
+
 export default function Home() {
-  const [videoInfo, setVideoInfo] = useState(null);
+  const [videoInfo, setVideoInfo] = useState<ExtendedVideoInfo | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [showError, setShowError] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState({
@@ -27,16 +61,36 @@ export default function Home() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Mutation for fetching video info
-  const fetchVideoMutation = useMutation({
-    mutationFn: async (url: string) => {
-      const videoId = extractVideoId(url);
-      if (!videoId) {
+  // Mutation for fetching video or playlist info
+  const fetchVideoMutation = useMutation<ExtendedVideoInfo, Error, string>({
+    mutationFn: async (url: string): Promise<ExtendedVideoInfo> => {
+      // First determine if it's a video or playlist URL
+      const urlType = parseYouTubeInput(url);
+      
+      if (urlType.type === 'unknown' || !urlType.id) {
         throw new Error("Invalid YouTube URL");
       }
       
-      const response = await apiRequest("GET", `/api/videos/info?videoId=${videoId}`, undefined);
-      return response.json();
+      if (urlType.type === 'video') {
+        // It's a video - fetch video info
+        const response = await apiRequest("GET", `/api/videos/info?videoId=${urlType.id}`, undefined);
+        return response.json();
+      } else if (urlType.type === 'playlist') {
+        // It's a playlist - first check if there's a video in the URL too
+        const videoId = extractVideoId(url);
+        
+        if (videoId) {
+          // It's a video in a playlist - fetch video info with playlist context
+          const response = await apiRequest("GET", `/api/videos/info?url=${encodeURIComponent(url)}`, undefined);
+          return response.json();
+        } else {
+          // It's just a playlist - fetch playlist info
+          const response = await apiRequest("GET", `/api/playlists/info?playlistId=${urlType.id}`, undefined);
+          return response.json();
+        }
+      }
+      
+      throw new Error("Could not process YouTube URL");
     },
     onSuccess: (data) => {
       setVideoInfo(data);
@@ -137,7 +191,7 @@ export default function Home() {
       
       return { success: true };
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       setDownloadProgress({
         isDownloading: false,
         progress: 0,
@@ -145,9 +199,15 @@ export default function Home() {
         totalSize: 0,
         speed: 0,
       });
+      
+      // Customize success message based on download type
+      const isPlaylistDownload = variables.isPlaylist && variables.playlistItems && variables.playlistItems.length > 1;
+      
       toast({
         title: "Download Complete",
-        description: "Your video has been downloaded successfully!",
+        description: isPlaylistDownload 
+          ? `Your playlist has been downloaded successfully!` 
+          : "Your video has been downloaded successfully!",
       });
     },
     onError: (error: Error) => {
@@ -191,6 +251,11 @@ export default function Home() {
     setShowError(false);
   };
 
+  // Determine if we should show the playlist preview
+  const shouldShowPlaylist = videoInfo?.isPlaylist && 
+                            videoInfo?.playlistItems && 
+                            videoInfo.playlistItems.length > 0;
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -201,11 +266,23 @@ export default function Home() {
           isLoading={fetchVideoMutation.isPending} 
         />
         
-        <VideoPreview 
-          videoInfo={videoInfo} 
-          isLoading={fetchVideoMutation.isPending}
-          onDownload={handleDownload}
-        />
+        {/* Show Video Preview for single videos */}
+        {!shouldShowPlaylist && (
+          <VideoPreview 
+            videoInfo={videoInfo} 
+            isLoading={fetchVideoMutation.isPending}
+            onDownload={handleDownload}
+          />
+        )}
+        
+        {/* Show Playlist Preview for playlists */}
+        {shouldShowPlaylist && (
+          <PlaylistPreview
+            videoInfo={videoInfo}
+            isLoading={fetchVideoMutation.isPending}
+            onDownload={handleDownload}
+          />
+        )}
         
         <DownloadProgress 
           isDownloading={downloadProgress.isDownloading}
