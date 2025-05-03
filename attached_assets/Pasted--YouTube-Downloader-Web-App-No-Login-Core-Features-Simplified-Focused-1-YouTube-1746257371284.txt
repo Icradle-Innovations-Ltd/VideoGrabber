@@ -1,0 +1,80 @@
+# YouTube Downloader Web App (No Login)
+
+## ✅ Core Features (Simplified & Focused)
+
+1. **YouTube URL Input**
+
+   * Users paste a YouTube link into a simple input field.
+
+2. **Video Info Preview**
+
+   * Displays the video title, thumbnail, and duration.
+
+3. **Format & Quality Selector**
+
+   * Automatically detects and lists available formats:
+
+     * MP4 (1080p, 720p, 480p)
+     * MP3 (audio-only)
+     * WebM, AAC, or Opus audio options
+
+4. **Subtitles Download (Optional)**
+
+   * Allows download of available subtitles in SRT or VTT formats.
+
+5. **Audio/Video Trimming**
+
+   * Users can set start/end times to clip a specific part of the video or audio.
+
+6. **Playlist Support (Optional)**
+
+   * Accepts YouTube playlist URLs and enables users to choose which videos to download.
+
+---
+
+## ⚙️ Advanced Features (No Login Required)
+
+1. **Dark Mode Toggle**
+
+   * UI toggle for switching between light and dark modes.
+
+2. **Drag & Drop Link Area**
+
+   * Users can drag a YouTube link onto the area to populate the input.
+
+3. **Download Progress Indicator**
+
+   * Shows real-time status: fetching, processing, downloading.
+
+4. **Smart Clipboard Detection**
+
+   * Auto-fills the input field if a valid YouTube URL is detected in the clipboard.
+
+---
+
+## 🔧 Tech Stack (Lightweight, Powerful)
+
+* **Frontend**: React + Tailwind CSS
+* **Backend**: Node.js + Express
+* **Downloader Engine**: Python script using `yt-dlp`, integrated via REST API or child process
+
+---
+
+## 🚫 Excluded/Removed Features
+
+* ❌ Login / authentication
+* ❌ User accounts or database storage
+* ❌ History saving or browsing
+* ❌ Ads or premium-only features
+
+---
+
+## 📌 Notes
+
+* This web app focuses **only on YouTube** — no support for other platforms.
+* All processing happens on the server with `yt-dlp` to ensure reliability.
+* Designed for speed, privacy, and simplicity.
+
+---
+
+Let me know if you'd like to proceed with the **frontend React layout**, the **Express backend with `yt-dlp` integration**, or both.
