@@ -1,14 +1,21 @@
 import { spawn } from "child_process";
 import { Readable } from "stream";
-import { VideoInfo, DownloadOptions } from "@shared/schema";
+import { VideoInfo, DownloadOptions, PlaylistInfo } from "@shared/schema";
 import { storage } from "../storage";
 import path from "path";
 import os from "os";
 import fs from "fs";
 import { PassThrough } from "stream";
 
-// Function to get video information using yt-dlp
-export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
+// Helper function to extract playlist ID from URL
+function extractPlaylistId(url: string): string | null {
+  const regExp = /(?:list=)([a-zA-Z0-9_-]+)/;
+  const match = url.match(regExp);
+  return match ? match[1] : null;
+}
+
+// Function to get video or playlist information using yt-dlp
+export async function getVideoInfo(videoId: string, url?: string): Promise<VideoInfo> {
   try {
     // Check if we have cached info for this video
     const cachedInfo = await storage.getCachedVideoInfo(videoId);
@@ -17,8 +24,25 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
     }
 
     // Execute yt-dlp to get video info in JSON format
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const videoUrl = url || `https://www.youtube.com/watch?v=${videoId}`;
     
+    // Check if this is a playlist URL
+    const playlistId = extractPlaylistId(videoUrl);
+    
+    // If it's a playlist, get both video and playlist info
+    if (playlistId) {
+      try {
+        const videoInfo = await getVideoWithPlaylistInfo(videoId, videoUrl, playlistId);
+        // Cache the video info
+        storage.saveVideoInfo(videoInfo);
+        return videoInfo;
+      } catch (error) {
+        console.error("Error getting playlist info, falling back to single video:", error);
+        // Fall back to single video if playlist info fails
+      }
+    }
+    
+    // Get standard video info
     return new Promise((resolve, reject) => {
       const ytDlp = spawn("yt-dlp", [
         "--dump-json",
@@ -26,7 +50,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
         "--force-ipv4",
         "--geo-bypass",
         "--no-check-certificates",
-        url
+        videoUrl
       ]);
 
       let outputData = "";
@@ -76,6 +100,164 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
     console.error("Error getting video info:", error);
     throw error;
   }
+}
+
+// Function to get video info with additional playlist information
+async function getVideoWithPlaylistInfo(videoId: string, videoUrl: string, playlistId: string): Promise<VideoInfo> {
+  return new Promise((resolve, reject) => {
+    const ytDlp = spawn("yt-dlp", [
+      "--dump-json",
+      "--flat-playlist", // Don't download the videos, just get the playlist info
+      "--force-ipv4",
+      "--geo-bypass",
+      "--no-check-certificates",
+      `https://www.youtube.com/playlist?list=${playlistId}`
+    ]);
+
+    let outputData = "";
+    let errorData = "";
+
+    ytDlp.stdout.on("data", (data) => {
+      outputData += data.toString();
+    });
+
+    ytDlp.stderr.on("data", (data) => {
+      errorData += data.toString();
+    });
+
+    ytDlp.on("close", async (code) => {
+      if (code !== 0) {
+        console.error(`yt-dlp playlist info exited with code ${code}`, errorData);
+        reject(new Error(`Failed to get playlist info: ${errorData || "Unknown error"}`));
+        return;
+      }
+
+      try {
+        // Parse the playlist items from the output
+        const playlistItems: VideoInfo["playlistItems"] = [];
+        const lines = outputData.split('\n').filter(line => line.trim());
+        
+        let playlistTitle = "YouTube Playlist";
+        let playlistThumbnail = "";
+        
+        // Each line is a JSON object representing a video in the playlist
+        for (let i = 0; i < lines.length; i++) {
+          try {
+            const item = JSON.parse(lines[i]);
+            if (i === 0) {
+              // Use the first video's uploader as the playlist owner
+              playlistTitle = item.playlist || "YouTube Playlist";
+              playlistThumbnail = item.thumbnail || "";
+            }
+            
+            playlistItems.push({
+              id: item.id,
+              title: item.title || `Video ${i + 1}`,
+              duration: item.duration || 0,
+              thumbnailUrl: item.thumbnail || "",
+              position: i
+            });
+          } catch (error) {
+            console.error("Error parsing playlist item:", error);
+          }
+        }
+        
+        // Now get the single video info for the requested video
+        const singleVideoInfo = await getVideoInfo(videoId);
+        
+        // Combine single video info with playlist info
+        const combinedInfo: VideoInfo = {
+          ...singleVideoInfo,
+          isPlaylist: true,
+          playlistItems: playlistItems
+        };
+        
+        resolve(combinedInfo);
+      } catch (error) {
+        console.error("Error parsing playlist information:", error);
+        reject(new Error("Failed to parse playlist information"));
+      }
+    });
+  });
+}
+
+// Function to get only playlist information
+export async function getPlaylistInfo(playlistId: string): Promise<PlaylistInfo> {
+  return new Promise((resolve, reject) => {
+    const ytDlp = spawn("yt-dlp", [
+      "--dump-json",
+      "--flat-playlist", // Don't download the videos, just get the playlist info
+      "--force-ipv4",
+      "--geo-bypass",
+      "--no-check-certificates",
+      `https://www.youtube.com/playlist?list=${playlistId}`
+    ]);
+
+    let outputData = "";
+    let errorData = "";
+
+    ytDlp.stdout.on("data", (data) => {
+      outputData += data.toString();
+    });
+
+    ytDlp.stderr.on("data", (data) => {
+      errorData += data.toString();
+    });
+
+    ytDlp.on("close", (code) => {
+      if (code !== 0) {
+        console.error(`yt-dlp playlist info exited with code ${code}`, errorData);
+        reject(new Error(`Failed to get playlist info: ${errorData || "Unknown error"}`));
+        return;
+      }
+
+      try {
+        // Parse the playlist items from the output
+        const videos: PlaylistInfo["videos"] = [];
+        const lines = outputData.split('\n').filter(line => line.trim());
+        
+        let playlistTitle = "YouTube Playlist";
+        let playlistThumbnail = "";
+        let channelTitle = "";
+        
+        // Each line is a JSON object representing a video in the playlist
+        for (let i = 0; i < lines.length; i++) {
+          try {
+            const item = JSON.parse(lines[i]);
+            if (i === 0) {
+              // Use the first video's info for playlist metadata
+              playlistTitle = item.playlist || "YouTube Playlist";
+              playlistThumbnail = item.thumbnail || "";
+              channelTitle = item.uploader || "";
+            }
+            
+            videos.push({
+              id: item.id,
+              title: item.title || `Video ${i + 1}`,
+              duration: item.duration || 0,
+              thumbnailUrl: item.thumbnail || "",
+              position: i
+            });
+          } catch (error) {
+            console.error("Error parsing playlist item:", error);
+          }
+        }
+        
+        const playlistInfo: PlaylistInfo = {
+          id: playlistId,
+          title: playlistTitle,
+          thumbnailUrl: playlistThumbnail,
+          channelTitle: channelTitle,
+          videos: videos
+        };
+        
+        resolve(playlistInfo);
+      } catch (error) {
+        console.error("Error parsing playlist information:", error);
+        reject(new Error("Failed to parse playlist information"));
+      }
+    });
+  });
 }
 
 // Parse yt-dlp formats to our format structure
@@ -217,9 +399,16 @@ function getLangNameFromCode(code: string): string {
   return langMap[code] || code;
 }
 
-// Function to download a video
+// Function to download a video or playlist
 export async function downloadVideo(options: DownloadOptions): Promise<Readable> {
-  const { videoId, formatId, start, end, subtitle, subtitleFormat } = options;
+  const { videoId, formatId, start, end, subtitle, subtitleFormat, isPlaylist, playlistItems } = options;
+  
+  // If this is a playlist download, handle it differently
+  if (isPlaylist && playlistItems && playlistItems.length > 0) {
+    return downloadPlaylist(options);
+  }
+  
+  // Single video download
   const url = `https://www.youtube.com/watch?v=${videoId}`;
   
   // Create temp directory for downloads if it doesn't exist
@@ -253,6 +442,142 @@ export async function downloadVideo(options: DownloadOptions): Promise<Readable>
       outputStream.end();
       return outputStream;
     }
+  }
+}
+
+// Function to download a playlist (multiple videos as a zip)
+async function downloadPlaylist(options: DownloadOptions): Promise<Readable> {
+  const { videoId, formatId, playlistItems } = options;
+  
+  if (!playlistItems || playlistItems.length === 0) {
+    throw new Error("No playlist items provided for download");
+  }
+  
+  // For playlists, we'll create a temp directory to store the videos and then zip them
+  const tempDir = path.join(os.tmpdir(), "youtube-playlist-" + Date.now());
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  
+  // Create a pass-through stream for the final output
+  const outputStream = new PassThrough();
+  
+  try {
+    // Start a separate process to handle the downloads since they can take a while
+    const ytDlp = spawn("yt-dlp", [
+      "-f", formatId,
+      "--force-ipv4",
+      "--geo-bypass",
+      "--no-check-certificates",
+      "--ignore-errors",
+      "--output", path.join(tempDir, "%(title)s.%(ext)s"),
+      ...playlistItems.map(id => `https://www.youtube.com/watch?v=${id}`)
+    ]);
+    
+    let errorMessage = "";
+    let progressMessage = "";
+    
+    ytDlp.stderr.on("data", (data) => {
+      errorMessage += data.toString();
+      console.error(`Playlist download stderr: ${data.toString()}`);
+    });
+    
+    ytDlp.stdout.on("data", (data) => {
+      progressMessage += data.toString();
+      console.log(`Playlist download progress: ${data.toString()}`);
+    });
+    
+    ytDlp.on("error", (error) => {
+      console.error("Failed to start playlist download:", error);
+      outputStream.emit("error", new Error(`Playlist download failed: ${error.message}`));
+      outputStream.end();
+    });
+    
+    ytDlp.on("close", async (code) => {
+      try {
+        // Check if any files were downloaded
+        const files = fs.readdirSync(tempDir);
+        
+        if (files.length === 0) {
+          throw new Error("No files were downloaded from the playlist");
+        }
+        
+        // For playlists with a single video, just stream the file directly
+        if (files.length === 1) {
+          const filePath = path.join(tempDir, files[0]);
+          const fileStream = fs.createReadStream(filePath);
+          
+          fileStream.on("end", () => {
+            // Clean up when done
+            try {
+              fs.unlinkSync(filePath);
+              fs.rmdirSync(tempDir);
+            } catch (e) {
+              console.error("Error cleaning up playlist temp files:", e);
+            }
+            outputStream.end();
+          });
+          
+          fileStream.pipe(outputStream);
+          return;
+        }
+        
+        // For multiple files, create a zip file
+        const zipPath = path.join(os.tmpdir(), `youtube-playlist-${videoId}-${Date.now()}.zip`);
+        
+        // We'll use a simple zip command to create the archive
+        const zip = spawn("zip", [
+          "-j", // Don't record directory names
+          zipPath, 
+          ...files.map(file => path.join(tempDir, file))
+        ]);
+        
+        zip.on("close", async (zipCode) => {
+          if (zipCode !== 0) {
+            throw new Error("Failed to create playlist zip file");
+          }
+          
+          // Stream the zip file to the output
+          const zipStream = fs.createReadStream(zipPath);
+          
+          zipStream.on("end", () => {
+            // Clean up when done
+            try {
+              fs.unlinkSync(zipPath);
+              // Delete temp directory and files
+              files.forEach(file => {
+                try {
+                  fs.unlinkSync(path.join(tempDir, file));
+                } catch (e) {}
+              });
+              fs.rmdirSync(tempDir);
+            } catch (e) {
+              console.error("Error cleaning up playlist zip:", e);
+            }
+            outputStream.end();
+          });
+          
+          zipStream.pipe(outputStream);
+        });
+        
+        zip.on("error", (error) => {
+          console.error("Error creating zip file:", error);
+          outputStream.emit("error", new Error("Failed to create playlist zip file"));
+          outputStream.end();
+        });
+      } catch (error) {
+        console.error("Error processing playlist downloads:", error);
+        outputStream.emit("error", new Error("Failed to process playlist download"));
+        outputStream.end();
+      }
+    });
+    
+    return outputStream;
+  } catch (error) {
+    console.error("Error starting playlist download:", error);
+    outputStream.emit("error", new Error("Failed to start playlist download"));
+    outputStream.end();
+    return outputStream;
   }
 }
 

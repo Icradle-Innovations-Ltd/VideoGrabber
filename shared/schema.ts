@@ -54,7 +54,17 @@ export const videoInfoSchema = z.object({
       lang: z.string(),
       name: z.string()
     })
-  )
+  ),
+  isPlaylist: z.boolean().optional(),
+  playlistItems: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      duration: z.number(),
+      thumbnailUrl: z.string(),
+      position: z.number()
+    })
+  ).optional()
 });
 
 export type VideoInfo = z.infer<typeof videoInfoSchema>;
@@ -65,7 +75,28 @@ export const downloadOptionsSchema = z.object({
   start: z.number().optional(),
   end: z.number().optional(),
   subtitle: z.string().optional(),
-  subtitleFormat: z.string().optional()
+  subtitleFormat: z.string().optional(),
+  isPlaylist: z.boolean().optional(),
+  playlistItems: z.array(z.string()).optional()
 });
+
+export const playlistInfoSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  thumbnailUrl: z.string(),
+  channelTitle: z.string(),
+  videos: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      duration: z.number(),
+      thumbnailUrl: z.string(),
+      position: z.number()
+    })
+  )
+});
+
+export type PlaylistInfo = z.infer<typeof playlistInfoSchema>;
 
 export type DownloadOptions = z.infer<typeof downloadOptionsSchema>;

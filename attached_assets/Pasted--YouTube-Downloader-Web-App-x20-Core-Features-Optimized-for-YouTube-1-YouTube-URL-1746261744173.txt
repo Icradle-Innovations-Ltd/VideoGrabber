@@ -1,0 +1,98 @@
+# YouTube Downloader Web App&#x20;
+
+## ✅ Core Features (Optimized for YouTube)
+
+1. **YouTube URL Input**
+
+   * Simple input field for users to paste a YouTube video or playlist link.
+
+2. **Video Info Preview**
+
+   * Displays title, thumbnail, duration, and basic metadata instantly after pasting a URL.
+
+3. **Format & Quality Selector**
+
+   * Lists available formats using `yt-dlp` detection:
+
+     * MP4: 1080p HD
+
+       720P
+
+       480p
+
+       360p
+
+       240p
+
+       144p
+
+       MP3 (audio only)
+     * WebM, AAC, Opus (audio formats)
+     * Auto-filter best quality options
+
+4. **Subtitles Download**
+
+   * Offers subtitle download (SRT/VTT) if available.
+   * Users can pick language if multiple subtitle tracks exist.
+
+5. **Audio/Video Trimming Tool**
+
+   * Trim specific part of video/audio using start/end time selectors.
+   * Real-time preview support for trimming area.
+
+6. **Playlist Downloader**
+
+   * Detects and displays all videos in a playlist.
+   * Users can select specific videos to download with their preferred format.
+
+---
+
+## ⚙️ Advanced Features&#x20;
+
+1. **Dark Mode UI**
+
+   * Toggle between light/dark themes for better accessibility.
+
+2. **Drag & Drop Support**
+
+   * Drag and drop a YouTube URL to populate the input automatically.
+
+3. **Download Progress Visualization**
+
+   * Real-time visual status showing fetch, parse, process, and download.
+
+4. **Smart Clipboard Detection**
+
+   * Auto-detect and paste valid YouTube URLs from clipboard upon opening app.
+
+5. **Conversion Format Suggestions**
+
+   * System suggests best video/audio conversion based on content type and quality.
+
+6. **Minimal Mode Option**
+
+   * Toggle to hide advanced settings and show only essential controls.
+
+7. **Clear Button**
+
+   * Quickly reset the interface to enter a new link.
+
+---
+
+## 🔧 Tech Stack (Modern, Efficient)
+
+* **Frontend**: React + Tailwind CSS + Axios
+* **Backend**: Node.js + Express
+* **Downloader Engine**: Python script using `yt-dlp`, triggered via Express API
+* **Utility Layer**: FFMPEG (optional) for advanced trimming/conversion
+
+## 📌 Project Highlights
+
+* 100% YouTube-only support for performance and focus.
+* Server handles download logic using `yt-dlp` and streams output back to client.
+* Lightweight and privacy-focused: no analytics or tracking.
+* Optimized for mobile and desktop browsers.
+
+---
+
+Would you like to begin generating the **frontend UI**, **backend API**, or the **Python ********************************`yt-dlp`******************************** integration script**?
