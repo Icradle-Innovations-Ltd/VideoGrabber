@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 1%;
+    
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 1%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 1%;
+    
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    
+    --primary: 0 100% 50%;  /* YouTube red #FF0000 */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 0 0% 16%;  /* Dark gray #282828 */
+    --secondary-foreground: 0 0% 100%;
+    
+    --accent: 0 0% 38%;     /* Medium gray #606060 */
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    
+    --ring: 0 100% 50%;     /* YouTube red for focus rings */
+    
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 240 10% 4%;    /* Dark mode background */
+    --foreground: 0 0% 100%;
+    
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    
+    --popover: 240 10% 4%;
+    --popover-foreground: 0 0% 100%;
+    
+    --card: 240 10% 12%;      /* Dark mode card #1E1E1E */
+    --card-foreground: 0 0% 100%;
+    
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    
+    --primary: 0 100% 50%;    /* Keep YouTube red */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    
+    --accent: 0 0% 33%;       /* Dark mode accent gray #535353 */
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --ring: 0 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  
+  /* Custom range slider styling */
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    @apply bg-primary;
+    cursor: pointer;
+  }
+  .dark input[type="range"]::-webkit-slider-thumb {
+    background: #E00000;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    @apply bg-primary;
+    cursor: pointer;
+  }
+  .dark input[type="range"]::-moz-range-thumb {
+    background: #E00000;
+  }
+}
