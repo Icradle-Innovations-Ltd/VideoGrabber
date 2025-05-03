@@ -62,7 +62,7 @@ export function PlaylistPreview({ videoInfo, isLoading, onDownload }: PlaylistPr
   if (!videoInfo && !isLoading) return null;
   
   // If it's not actually a playlist or has no items, don't render playlist UI
-  if (!videoInfo?.isPlaylist || !videoInfo?.playlistItems || videoInfo.playlistItems.length === 0) return null;
+  if (!videoInfo || !videoInfo.playlistItems || videoInfo.playlistItems.length === 0) return null;
 
   const playlistItems = videoInfo.playlistItems;
 

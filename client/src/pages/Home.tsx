@@ -252,8 +252,7 @@ export default function Home() {
   };
 
   // Determine if we should show the playlist preview
-  const shouldShowPlaylist = videoInfo?.isPlaylist && 
-                            videoInfo?.playlistItems && 
+  const shouldShowPlaylist = videoInfo?.playlistItems && 
                             videoInfo.playlistItems.length > 0;
 
   return (

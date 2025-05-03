@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
-import { CheckCircle } from "lucide-react";
-import { isValidYouTubeUrl } from "@/lib/utils";
+import { CheckCircle, ListVideo, Youtube } from "lucide-react";
+import { isValidYouTubeUrl, isPlaylistUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "./ui/badge";
 
 interface InputSectionProps {
   onFetchVideo: (url: string) => void;
@@ -19,9 +20,19 @@ export function InputSection({ onFetchVideo, isLoading }: InputSectionProps) {
   const dropAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  const [isPlaylistDetected, setIsPlaylistDetected] = useState(false);
+
   useEffect(() => {
     // Validate URL as user types
-    setIsValid(isValidYouTubeUrl(url));
+    const valid = isValidYouTubeUrl(url);
+    setIsValid(valid);
+    
+    // Check if it's a playlist
+    if (valid) {
+      setIsPlaylistDetected(isPlaylistUrl(url));
+    } else {
+      setIsPlaylistDetected(false);
+    }
   }, [url]);
 
   // Handle clipboard paste
@@ -35,6 +46,17 @@ export function InputSection({ onFetchVideo, isLoading }: InputSectionProps) {
           if (isValidYouTubeUrl(pastedText)) {
             setUrl(pastedText);
             setIsValid(true);
+            
+            // Show a notification about what was detected
+            const isPlaylist = isPlaylistUrl(pastedText);
+            setIsPlaylistDetected(isPlaylist);
+            
+            toast({
+              title: isPlaylist ? "Playlist Detected" : "Video URL Detected",
+              description: isPlaylist 
+                ? "We detected a YouTube playlist URL from your clipboard" 
+                : "We detected a YouTube video URL from your clipboard",
+            });
           }
         } catch (error) {
           console.error("Clipboard access error:", error);
@@ -73,6 +95,18 @@ export function InputSection({ onFetchVideo, isLoading }: InputSectionProps) {
     if (isValidYouTubeUrl(droppedText)) {
       setUrl(droppedText);
       setIsValid(true);
+      
+      // Check if it's a playlist URL
+      const isPlaylist = isPlaylistUrl(droppedText);
+      setIsPlaylistDetected(isPlaylist);
+      
+      // Show a toast notification
+      toast({
+        title: isPlaylist ? "Playlist URL Detected" : "Video URL Detected",
+        description: isPlaylist 
+          ? "We detected a YouTube playlist in the dropped URL" 
+          : "Valid YouTube URL detected",
+      });
     } else {
       toast({
         title: "Invalid URL",
@@ -139,13 +173,36 @@ export function InputSection({ onFetchVideo, isLoading }: InputSectionProps) {
                   <CheckCircle className="h-5 w-5 text-green-500" />
                 </div>
               )}
+              
+              {isValid && isPlaylistDetected && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <Badge variant="secondary" className="flex items-center gap-1 bg-primary/10 text-primary">
+                    <ListVideo className="h-3 w-3" />
+                    <span>Playlist</span>
+                  </Badge>
+                </div>
+              )}
             </div>
             <Button 
               onClick={handleFetchVideo} 
               disabled={isLoading}
               className="py-6 px-6 h-auto whitespace-nowrap"
             >
-              {isLoading ? "Loading..." : "Get Video"}
+              {isLoading ? "Loading..." : (
+                <span className="flex items-center gap-1">
+                  {isPlaylistDetected ? (
+                    <>
+                      <ListVideo className="h-4 w-4" />
+                      Get Playlist
+                    </>
+                  ) : (
+                    <>
+                      <Youtube className="h-4 w-4" />
+                      Get Video
+                    </>
+                  )}
+                </span>
+              )}
             </Button>
           </div>
 
