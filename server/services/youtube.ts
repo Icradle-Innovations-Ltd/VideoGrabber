@@ -16,14 +16,13 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
       return cachedInfo;
     }
 
-    // Execute yt-dlp to get video info in JSON format with all available formats
+    // Execute yt-dlp to get video info in JSON format
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     
     return new Promise((resolve, reject) => {
       const ytDlp = spawn("yt-dlp", [
         "--dump-json",
         "--no-playlist",
-        "--list-formats",
         "--force-ipv4",
         "--geo-bypass",
         "--no-check-certificates",
@@ -82,7 +81,7 @@ export async function getVideoInfo(videoId: string): Promise<VideoInfo> {
 // Parse yt-dlp formats to our format structure
 function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
   // Standard resolution labels for consistent presentation
-  const standardResolutions = {
+  const standardResolutions: Record<string, { height: number; label: string }> = {
     "144p": { height: 144, label: "144p" },
     "240p": { height: 240, label: "240p" },
     "360p": { height: 360, label: "360p" },
@@ -128,7 +127,8 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
         let minDiff = Infinity;
         
         for (const res in standardResolutions) {
-          const diff = Math.abs(standardResolutions[res].height - height);
+          const resInfo = standardResolutions[res as keyof typeof standardResolutions];
+          const diff = Math.abs(resInfo.height - height);
           if (diff < minDiff) {
             minDiff = diff;
             closestRes = res;
@@ -136,7 +136,7 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
         }
         
         if (closestRes) {
-          qualityLabel = standardResolutions[closestRes].label;
+          qualityLabel = standardResolutions[closestRes as keyof typeof standardResolutions].label;
         } else {
           qualityLabel = `${height}p`;
         }
