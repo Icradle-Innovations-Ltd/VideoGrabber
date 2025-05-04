@@ -192,8 +192,8 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                       {videoInfo.formats
                         .filter(f => f.hasVideo && f.hasAudio && f.extension === 'mp4')
                         .sort((a, b) => {
-                          const aRes = parseInt(a.quality.match(/\d+/)?.[0] || '0');
-                          const bRes = parseInt(b.quality.match(/\d+/)?.[0] || '0');
+                          const aRes = parseInt(a.qualityLabel?.match(/\d+/)?.[0] || '0');
+                          const bRes = parseInt(b.qualityLabel?.match(/\d+/)?.[0] || '0');
                           return bRes - aRes;
                         })
                         .map(format => (
@@ -260,7 +260,7 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                       <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Audio Only (MP3)</h5>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {videoInfo.formats
-                          .filter(f => !f.hasVideo && f.hasAudio)
+                          .filter(f => !f.hasVideo && f.hasAudio && f.extension === 'mp3')
                           .sort((a, b) => b.filesize - a.filesize)
                           .map(format => (
                             <div
