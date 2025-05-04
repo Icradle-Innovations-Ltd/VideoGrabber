@@ -16,13 +16,6 @@ interface Format {
   hasVideo: boolean;
   filesize: number;
   audioChannels?: number;
-  downloadAudio?: boolean;
-  downloadCaptions?: boolean;
-}
-
-interface Subtitle {
-  lang: string;
-  name: string;
 }
 
 interface VideoInfo {
@@ -33,7 +26,6 @@ interface VideoInfo {
   duration: number;
   channel: string;
   formats: Format[];
-  subtitles: Subtitle[];
 }
 
 interface VideoPreviewProps {
@@ -45,57 +37,22 @@ interface VideoPreviewProps {
 export interface DownloadOptions {
   videoId: string;
   formatId: string;
-  start?: number;
-  end?: number;
-  subtitle?: string;
-  subtitleFormat?: string;
-  isPlaylist?: boolean;
-  playlistItems?: string[];
 }
 
 export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewProps) {
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
-  const [trimStart, setTrimStart] = useState(0);
-  const [trimEnd, setTrimEnd] = useState(100);
-  const [subtitle, setSubtitle] = useState<string>("none");
-  const [subtitleFormat, setSubtitleFormat] = useState<string>("srt");
   const { toast } = useToast();
 
-  // Reset selected format when video changes
   useEffect(() => {
     if (videoInfo) {
-      // Auto-select best mp4 format with video
-      const bestMp4 = videoInfo.formats
-        .filter(f => f.extension === "mp4" && f.hasVideo)
+      const bestFormat = videoInfo.formats
+        .filter(f => f.hasVideo && f.hasAudio)
         .sort((a, b) => (b.filesize || 0) - (a.filesize || 0))[0];
-
-      setSelectedFormat(bestMp4?.formatId || null);
-
-      // Reset trim values
-      setTrimStart(0);
-      setTrimEnd(100);
+      setSelectedFormat(bestFormat?.formatId || null);
     } else {
       setSelectedFormat(null);
     }
   }, [videoInfo]);
-
-  if (!videoInfo && !isLoading) return null;
-
-  const handleStartTrimChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    setTrimStart(value);
-    if (value >= trimEnd) {
-      setTrimEnd(Math.min(value + 1, 100));
-    }
-  };
-
-  const handleEndTrimChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    setTrimEnd(value);
-    if (value <= trimStart) {
-      setTrimStart(Math.max(value - 1, 0));
-    }
-  };
 
   const handleDownload = () => {
     if (!videoInfo || !selectedFormat) {
@@ -107,19 +64,10 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
       return;
     }
 
-    const startTime = videoInfo.duration * (trimStart / 100);
-    const endTime = videoInfo.duration * (trimEnd / 100);
-
-    const options: DownloadOptions = {
+    onDownload({
       videoId: videoInfo.id,
       formatId: selectedFormat,
-      start: trimStart > 0 ? startTime : undefined,
-      end: trimEnd < 100 ? endTime : undefined,
-      subtitle: subtitle !== "none" ? subtitle : undefined,
-      subtitleFormat: subtitle !== "none" ? subtitleFormat : undefined,
-    };
-
-    onDownload(options);
+    });
   };
 
   const getFormatIcon = (format: Format) => {
@@ -127,16 +75,6 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
       return <FileVideo className="h-5 w-5 mr-2" />;
     } else {
       return <FileAudio className="h-5 w-5 mr-2" />;
-    }
-  };
-
-  const getFormatLabel = (format: Format) => {
-    if (format.hasVideo && format.hasAudio) {
-      return format.qualityLabel || `${format.quality} with Audio`;
-    } else if (format.hasVideo) {
-      return format.qualityLabel || `${format.quality} (Video Only)`;
-    } else {
-      return `Audio Only ${format.audioChannels ? `(${format.audioChannels}ch)` : ''}`;
     }
   };
 
@@ -184,15 +122,10 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                 <div className="space-y-6">
                   {/* Video with Audio */}
                   <div>
-                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Video with Audio</h5>
+                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Video with Audio (MP4)</h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {videoInfo.formats
                         .filter(f => f.hasVideo && f.hasAudio && f.extension === 'mp4')
-                        .sort((a, b) => {
-                          const aRes = parseInt((a.qualityLabel || '0').match(/\d+/)?.[0] || '0');
-                          const bRes = parseInt((b.qualityLabel || '0').match(/\d+/)?.[0] || '0');
-                          return bRes - aRes;
-                        })
                         .map(format => (
                           <div
                             key={format.formatId}
@@ -206,7 +139,7 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                             <div className="flex items-center">
                               {getFormatIcon(format)}
                               <div>
-                                <div className="font-medium">{getFormatLabel(format)}</div>
+                                <div className="font-medium">{format.qualityLabel}</div>
                                 <div className="text-xs text-accent dark:text-gray-400">
                                   {formatFileSize(format.filesize)}
                                 </div>
@@ -219,15 +152,10 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
 
                   {/* Video Only */}
                   <div>
-                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Video Only</h5>
+                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Video Only (MP4)</h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {videoInfo.formats
                         .filter(f => f.hasVideo && !f.hasAudio && f.extension === 'mp4')
-                        .sort((a, b) => {
-                          const aRes = parseInt((a.qualityLabel || '0').match(/\d+/)?.[0] || '0');
-                          const bRes = parseInt((b.qualityLabel || '0').match(/\d+/)?.[0] || '0');
-                          return bRes - aRes;
-                        })
                         .map(format => (
                           <div
                             key={format.formatId}
@@ -241,7 +169,7 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                             <div className="flex items-center">
                               {getFormatIcon(format)}
                               <div>
-                                <div className="font-medium">{getFormatLabel(format)}</div>
+                                <div className="font-medium">{format.qualityLabel}</div>
                                 <div className="text-xs text-accent dark:text-gray-400">
                                   {formatFileSize(format.filesize)}
                                 </div>
@@ -254,11 +182,10 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
 
                   {/* Audio Only */}
                   <div>
-                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Audio Only</h5>
+                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Audio Only (MP3)</h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {videoInfo.formats
                         .filter(f => !f.hasVideo && f.hasAudio && f.extension === 'mp3')
-                        .sort((a, b) => b.filesize - a.filesize)
                         .map(format => (
                           <div
                             key={format.formatId}
@@ -272,7 +199,7 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                             <div className="flex items-center">
                               {getFormatIcon(format)}
                               <div>
-                                <div className="font-medium">{getFormatLabel(format)}</div>
+                                <div className="font-medium">{format.qualityLabel}</div>
                                 <div className="text-xs text-accent dark:text-gray-400">
                                   {formatFileSize(format.filesize)}
                                 </div>
@@ -282,9 +209,17 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                         ))}
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-6">
+                  <div className="pt-4">
+                    <Button
+                      className="w-full"
+                      onClick={handleDownload}
+                      disabled={!selectedFormat}
+                    >
+                      <DownloadIcon className="mr-2 h-4 w-4" />
+                      Download
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
