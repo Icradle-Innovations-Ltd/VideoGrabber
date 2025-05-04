@@ -1,4 +1,6 @@
-import { Download } from "lucide-react";
+
+import { Download, Github, Moon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function Header() {
   return (

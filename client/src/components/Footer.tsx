@@ -1,3 +1,6 @@
+
+import { Link } from "wouter";
+
 export function Footer() {
   return (
     <footer className="py-6 border-t border-border/40 bg-background/50">
