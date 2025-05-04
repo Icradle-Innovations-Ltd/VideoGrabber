@@ -56,6 +56,10 @@ export async function getVideoInfo(videoId: string, url?: string): Promise<Video
         "--no-warnings",
         "--skip-download",
         "--all-formats", // Get all available formats including high quality ones
+        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "--add-header", "Accept-Language:en-US,en;q=0.9",
+        "--mark-watched",
+        "--cookies-from-browser", "chrome",
         videoUrl
       ]);
 
