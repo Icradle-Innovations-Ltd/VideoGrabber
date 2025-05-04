@@ -1,6 +1,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
 
 export default function Terms() {
   return (
@@ -21,12 +22,13 @@ export default function Terms() {
                 <li>Attempt to decompile or reverse engineer any software contained on the website</li>
                 <li>Remove any copyright or other proprietary notations</li>
               </ul>
-              <h2>3. Disclaimer</h2>
-              <p>The materials on this website are provided on an 'as is' basis. We make no warranties, expressed or implied, and hereby disclaim and negate all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
+              <h2>3. Limitations</h2>
+              <p>You expressly understand and agree that your use of the service is at your sole risk and that the service is provided "as is" and "as available."</p>
             </div>
           </CardContent>
         </Card>
       </div>
+      <Footer />
     </>
   );
 }

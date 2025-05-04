@@ -1,6 +1,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
 
 export default function Privacy() {
   return (
@@ -22,10 +23,13 @@ export default function Privacy() {
               <p>We use the collected information solely for providing and improving our service. We do not share any personal information with third parties.</p>
               <h2>Data Storage</h2>
               <p>All processed videos and temporary files are automatically deleted after download completion.</p>
+              <h2>Your Rights</h2>
+              <p>You have the right to request information about your data and its deletion.</p>
             </div>
           </CardContent>
         </Card>
       </div>
+      <Footer />
     </>
   );
 }
