@@ -638,13 +638,9 @@ async function downloadUsingDirectMethod(
     const args = [
       "--no-playlist",
       "-f", formatId,
-      "--merge-output-format", "mp4",
-      "--extract-audio",
-      "--audio-format", "mp3",
-      "--write-subs",
-      "--sub-lang", "en",
-      "--sub-format", "srt",
-      "-o", "%(title)s.%(ext)s", // Output with video title
+      "-o", "-", // Output to stdout
+      "--force-ipv4",
+      "--geo-bypass",
       "--force-ipv4",
       "--geo-bypass",
       "--no-check-certificates",

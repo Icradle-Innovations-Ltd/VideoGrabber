@@ -68,9 +68,9 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
       const bestMp4 = videoInfo.formats
         .filter(f => f.extension === "mp4" && f.hasVideo)
         .sort((a, b) => (b.filesize || 0) - (a.filesize || 0))[0];
-      
+
       setSelectedFormat(bestMp4?.formatId || null);
-      
+
       // Reset trim values
       setTrimStart(0);
       setTrimEnd(100);
@@ -186,7 +186,7 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
 
                 <div className="mb-6">
                   <h4 className="font-medium mb-2">Select Format:</h4>
-                  
+
                   {/* Format selection section */}
                   <div className="space-y-6">
                     {/* VIDEO WITH AUDIO FORMATS */}
@@ -227,13 +227,16 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                     </div>
 
                     {/* AUDIO ONLY FORMATS */}
-                    <div>
-                      <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">AUDIO ONLY</h5>
+                    <div className="mt-4">
+                      <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">AUDIO ONLY (MP3)</h5>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {videoInfo.formats
-                          .filter(format => !format.hasVideo && format.hasAudio)
-                          .sort((a, b) => (b.filesize || 0) - (a.filesize || 0))
-                          .slice(0, 2) // Limit to 2 formats
+                          .filter(format => !format.hasVideo && format.hasAudio && format.extension === 'mp3')
+                          .sort((a, b) => b.filesize - a.filesize)
+                          .map(format => ({
+                            ...format,
+                            qualityLabel: format.filesize > 10000000 ? 'MP3 - 320kbps' : 'MP3 - 128kbps'
+                          }))
                           .map((format) => (
                             <div
                               key={format.formatId}
@@ -245,109 +248,13 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                               onClick={() => setSelectedFormat(format.formatId)}
                             >
                               <div className="flex items-center">
-                                {getFormatIcon(format)}
-                                <div>
-                                  <div className="font-medium">{getFormatLabel(format)}</div>
-                                  <div className="text-xs text-accent dark:text-gray-400">
-                                    {formatFileSize(format.filesize)}
-                                  </div>
-                                </div>
+                                <FileAudio className="h-4 w-4 mr-2" />
+                                <span>{format.qualityLabel}</span>
                               </div>
                             </div>
                           ))}
                       </div>
                     </div>
-
-                    {/* ADVANCED OPTIONS */}
-                    <details className="mb-4">
-                      <summary className="font-medium cursor-pointer focus:outline-none">
-                        Advanced Options
-                      </summary>
-                      <div className="mt-4 space-y-4 pl-2">
-                        {/* Subtitle options */}
-                        <div>
-                          <h5 className="font-medium mb-2">Subtitles</h5>
-                          <div className="flex flex-wrap gap-2">
-                            <Select 
-                              value={subtitle} 
-                              onValueChange={setSubtitle}
-                            >
-                              <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Select language" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">No subtitles</SelectItem>
-                                {videoInfo.subtitles.map((sub) => (
-                                  <SelectItem key={sub.lang} value={sub.lang}>
-                                    {sub.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            
-                            {subtitle !== "none" && (
-                              <Select 
-                                value={subtitleFormat} 
-                                onValueChange={setSubtitleFormat}
-                              >
-                                <SelectTrigger className="w-[100px]">
-                                  <SelectValue placeholder="Format" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="srt">SRT</SelectItem>
-                                  <SelectItem value="vtt">VTT</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Trimming options */}
-                        <div>
-                          <h5 className="font-medium mb-2">Trim Video</h5>
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                              <span className="w-16">Start:</span>
-                              <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={trimStart}
-                                onChange={handleStartTrimChange}
-                                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none"
-                              />
-                              <span className="w-16 text-right">
-                                {formatTime(videoInfo.duration * (trimStart / 100))}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="w-16">End:</span>
-                              <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={trimEnd}
-                                onChange={handleEndTrimChange}
-                                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none"
-                              />
-                              <span className="w-16 text-right">
-                                {formatTime(videoInfo.duration * (trimEnd / 100))}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </details>
-
-                    {/* DOWNLOAD BUTTON */}
-                    <Button
-                      className="w-full py-6 h-auto"
-                      onClick={handleDownload}
-                      disabled={!selectedFormat}
-                    >
-                      <DownloadIcon className="mr-2 h-5 w-5" />
-                      Download
-                    </Button>
                   </div>
                 </div>
               </div>
