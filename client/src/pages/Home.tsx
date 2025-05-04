@@ -257,48 +257,49 @@ export default function Home() {
                             videoInfo.playlistItems.length > 0;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navigation />
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
       
-      <main className="flex-grow container mx-auto px-4 md:px-6 py-8">
-        <InputSection 
-          onFetchVideo={handleFetchVideo} 
-          isLoading={fetchVideoMutation.isPending} 
-        />
-        
-        {/* Show Video Preview for single videos */}
-        {!shouldShowPlaylist && (
-          <VideoPreview 
-            videoInfo={videoInfo} 
-            isLoading={fetchVideoMutation.isPending}
-            onDownload={handleDownload}
+      <main className="flex-grow container mx-auto px-4 md:px-6 py-4 md:py-8 max-w-7xl">
+        <div className="space-y-6">
+          <InputSection 
+            onFetchVideo={handleFetchVideo} 
+            isLoading={fetchVideoMutation.isPending} 
           />
-        )}
-        
-        {/* Show Playlist Preview for playlists */}
-        {shouldShowPlaylist && (
-          <PlaylistPreview
-            videoInfo={videoInfo}
-            isLoading={fetchVideoMutation.isPending}
-            onDownload={handleDownload}
+          
+          {/* Show Video Preview for single videos */}
+          {!shouldShowPlaylist && (
+            <VideoPreview 
+              videoInfo={videoInfo} 
+              isLoading={fetchVideoMutation.isPending}
+              onDownload={handleDownload}
+            />
+          )}
+          
+          {/* Show Playlist Preview for playlists */}
+          {shouldShowPlaylist && (
+            <PlaylistPreview
+              videoInfo={videoInfo}
+              isLoading={fetchVideoMutation.isPending}
+              onDownload={handleDownload}
+            />
+          )}
+          
+          <DownloadProgress 
+            isDownloading={downloadProgress.isDownloading}
+            progress={downloadProgress.progress}
+            downloadedSize={downloadProgress.downloadedSize}
+            totalSize={downloadProgress.totalSize}
+            speed={downloadProgress.speed}
+            onCancel={handleCancelDownload}
           />
-        )}
-        
-        <DownloadProgress 
-          isDownloading={downloadProgress.isDownloading}
-          progress={downloadProgress.progress}
-          downloadedSize={downloadProgress.downloadedSize}
-          totalSize={downloadProgress.totalSize}
-          speed={downloadProgress.speed}
-          onCancel={handleCancelDownload}
-        />
-        
-        <ErrorMessage 
-          message={errorMessage} 
-          onDismiss={handleDismissError}
-          visible={showError}
-        />
+          
+          <ErrorMessage 
+            message={errorMessage} 
+            onDismiss={handleDismissError}
+            visible={showError}
+          />
+        </div>
       </main>
       
       <Footer />
