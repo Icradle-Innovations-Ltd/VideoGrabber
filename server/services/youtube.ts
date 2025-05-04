@@ -639,13 +639,18 @@ async function downloadUsingDirectMethod(
       "--no-playlist",
       "-f", formatId,
       "-o", "-", // Output to stdout
-      "--force-ipv4", // Force IPv4 to avoid some restrictions
-      "--geo-bypass", // Try to bypass geo-restrictions
-      "--extractor-retries", "5", // Retry 5 times if extraction fails
-      "--no-check-certificates", // Don't verify SSL certificates
-      "--prefer-insecure", // Prefer insecure connections
-      "--cookies-from-browser", "chrome", // Try to use chrome cookies
-      "--no-warnings", // Suppress warnings
+      "--force-ipv4",
+      "--geo-bypass",
+      "--no-check-certificates",
+      "--prefer-insecure",
+      "--no-warnings",
+      "--extractor-retries", "3",
+      "--add-header", "Accept-Language:en-US,en;q=0.9",
+      "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "--add-header", "Accept-Encoding:gzip, deflate",
+      "--add-header", "User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "--extractor-args", "youtube:player_client=android,web",
     ];
 
     // Add trim options if present
@@ -736,8 +741,14 @@ async function downloadUsingFileMethod(
       "--ignore-errors",
       "--no-check-certificates",
       "--prefer-insecure",
-      "--cookies-from-browser", "chrome",
-      "--no-warnings"
+      "--no-warnings",
+      "--extractor-retries", "3",
+      "--add-header", "Accept-Language:en-US,en;q=0.9",
+      "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "--add-header", "Accept-Encoding:gzip, deflate",
+      "--add-header", "User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "--extractor-args", "youtube:player_client=android,web"
     ];
 
     // Add trim options if present
