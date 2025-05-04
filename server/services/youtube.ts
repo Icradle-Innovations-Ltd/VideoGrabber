@@ -36,36 +36,30 @@ function extractPlaylistId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-// Helper function to execute yt-dlp with streaming support
+// Helper function to execute yt-dlp with common arguments
 async function executeYtdlp(
   args: string[],
-  outputStream?: PassThrough,
   outputToFile = false,
-): Promise<{ error: string; code: number }> {
+): Promise<{ output: string; error: string; code: number }> {
   return new Promise((resolve, reject) => {
     const ytDlp = spawn("yt-dlp", args);
+    let outputData = "";
     let errorData = "";
+
+    ytDlp.stdout.on("data", (data) => {
+      outputData += data.toString();
+    });
 
     ytDlp.stderr.on("data", (data) => {
       errorData += data.toString();
-      console.error(`yt-dlp stderr: ${data.toString()}`);
     });
-
-    if (outputStream && !outputToFile) {
-      ytDlp.stdout.pipe(outputStream);
-    } else if (outputToFile) {
-      // Handle file output separately if needed
-    }
 
     ytDlp.on("error", (error) => {
       reject(new Error(`Failed to start yt-dlp: ${error.message}`));
     });
 
     ytDlp.on("close", (code) => {
-      if (code !== 0) {
-        reject(new Error(`yt-dlp failed with code ${code}: ${errorData}`));
-      }
-      resolve({ error: errorData, code });
+      resolve({ output: outputData, error: errorData, code });
     });
   });
 }
@@ -76,6 +70,7 @@ export async function getVideoInfo(
   url?: string,
 ): Promise<VideoInfo> {
   try {
+    // Check cache first
     const cachedInfo = await storage.getCachedVideoInfo(videoId);
     if (cachedInfo) {
       console.log(`Returning cached video info for videoId: ${videoId}`);
@@ -85,6 +80,7 @@ export async function getVideoInfo(
     const videoUrl = url || `https://www.youtube.com/watch?v=${videoId}`;
     const playlistId = extractPlaylistId(videoUrl);
 
+    // Handle playlist if present
     if (playlistId) {
       try {
         const videoInfo = await getVideoWithPlaylistInfo(
@@ -102,6 +98,7 @@ export async function getVideoInfo(
       }
     }
 
+    // Common yt-dlp arguments for video info
     const args = [
       "--dump-json",
       "--no-playlist",
@@ -113,12 +110,12 @@ export async function getVideoInfo(
       "--no-check-certificates",
       "--no-warnings",
       "--skip-download",
-      "--list-formats",
+      "--list-formats", // Ensure we get all formats
       "--extract-audio",
       "--audio-format",
       "mp3",
       "--audio-quality",
-      "0",
+      "0", // Best quality, we'll generate others manually
       "--write-subs",
       "--write-auto-subs",
       "--sub-langs",
@@ -141,28 +138,13 @@ export async function getVideoInfo(
       throw new Error(`yt-dlp failed with code ${code}: ${error}`);
     }
 
-    if (!output) {
-      throw new Error("No output received from yt-dlp");
-    }
+    const cleanedOutput = output.trim().split("\n").pop() || "";
+    const rawData = JSON.parse(cleanedOutput);
 
-    const lines = output.trim().split("\n").filter(line => line.trim());
-    if (lines.length === 0) {
-      throw new Error("No valid output received from yt-dlp");
-    }
-
-    const lastLine = lines[lines.length - 1];
-    let rawData;
-    try {
-      rawData = JSON.parse(lastLine);
-    } catch (e) {
-      throw new Error("Failed to parse video information");
-    }
-
-    if (!rawData || typeof rawData !== 'object') {
-      throw new Error("Invalid video information received");
-    }
-
+    // Generate additional audio formats at different bitrates
     const audioFormats = await generateAudioFormats(videoUrl);
+
+    // Combine video and audio formats
     const allFormats = [...(rawData.formats || []), ...audioFormats];
 
     const videoInfo: VideoInfo = {
@@ -183,7 +165,9 @@ export async function getVideoInfo(
     return videoInfo;
   } catch (error) {
     console.error(`Error fetching video info for ${videoId}:`, error);
-    throw error;
+    throw new Error(
+      `Failed to get video info: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
   }
 }
 
@@ -239,7 +223,7 @@ async function generateAudioFormats(videoUrl: string): Promise<any[]> {
       format_note: `${bitrate}kbps`,
       abr: parseInt(bitrate),
       filesize:
-        rawData.filesize || (rawData.duration * parseInt(bitrate) * 1000) / 8,
+        rawData.filesize || (rawData.duration * parseInt(bitrate) * 1000) / 8, // Estimate filesize
     };
 
     audioFormats.push(audioFormat);
@@ -412,9 +396,7 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
       }
 
       return {
-        formatId:
-          format.format_id ||
-          `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        formatId: format.format_id,
         extension: format.ext || "unknown",
         quality: format.format_note || "unknown",
         qualityLabel,
@@ -424,7 +406,7 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
           format.filesize ||
           format.filesize_approx ||
           (hasVideo ? height * height * 60 : 3000000),
-        audioChannels: format.audioChannels || 2,
+        audioChannels: format.audio_channels || 2,
       };
     })
     .sort((a, b) => {
@@ -449,7 +431,97 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
     }
   }
 
-  return uniqueFormats;
+  // Ensure all desired formats are present
+  const finalFormats: VideoInfo["formats"] = [];
+  const videoWithAudioFormats = uniqueFormats.filter(
+    (f) => f.hasVideo && f.hasAudio,
+  );
+  const videoOnlyFormats = uniqueFormats.filter(
+    (f) => f.hasVideo && !f.hasAudio,
+  );
+  const audioOnlyFormats = uniqueFormats.filter(
+    (f) => !f.hasVideo && f.hasAudio,
+  );
+
+  // Ensure all video with audio resolutions
+  for (const res of standardResolutions) {
+    const height = parseInt(res);
+    const existing = videoWithAudioFormats.find(
+      (f) =>
+        f.hasVideo &&
+        f.hasAudio &&
+        parseInt(f.qualityLabel.match(/\d+p/)?.[0] || "0") === height,
+    );
+    if (existing) {
+      finalFormats.push(existing);
+    } else {
+      // Fallback: Create a placeholder format if not found
+      const baseFormat = videoWithAudioFormats[0] || videoOnlyFormats[0];
+      if (baseFormat) {
+        finalFormats.push({
+          ...baseFormat,
+          formatId: `placeholder-${res}-audio`,
+          qualityLabel: `MP4 - ${res} with Audio${height >= 2160 ? " 4K" : height >= 1440 ? " 2K" : height >= 1080 ? " Full HD" : height >= 720 ? " HD" : ""}`,
+          filesize: height * height * 60,
+          hasAudio: true,
+        });
+      }
+    }
+  }
+
+  // Ensure all video only resolutions
+  for (const res of standardResolutions) {
+    const height = parseInt(res);
+    const existing = videoOnlyFormats.find(
+      (f) =>
+        f.hasVideo &&
+        !f.hasAudio &&
+        parseInt(f.qualityLabel.match(/\d+p/)?.[0] || "0") === height,
+    );
+    if (existing) {
+      finalFormats.push(existing);
+    } else {
+      // Fallback: Create a placeholder format if not found
+      const baseFormat = videoOnlyFormats[0] || videoWithAudioFormats[0];
+      if (baseFormat) {
+        finalFormats.push({
+          ...baseFormat,
+          formatId: `placeholder-${res}-video`,
+          qualityLabel: `MP4 - ${res} (Video Only)${height >= 2160 ? " 4K" : height >= 1440 ? " 2K" : height >= 1080 ? " Full HD" : height >= 720 ? " HD" : ""}`,
+          filesize: height * height * 60,
+          hasAudio: false,
+        });
+      }
+    }
+  }
+
+  // Ensure all audio bitrates
+  for (const bitrate of audioBitrates) {
+    const existing = audioOnlyFormats.find((f) =>
+      f.qualityLabel.includes(`${bitrate}kbps`),
+    );
+    if (existing) {
+      finalFormats.push(existing);
+    } else {
+      // Fallback: Create a placeholder format if not found
+      const baseFormat = audioOnlyFormats[0] || {
+        filesize: 3000000,
+        audioChannels: 2,
+      };
+      finalFormats.push({
+        formatId: `placeholder-mp3-${bitrate}`,
+        extension: "mp3",
+        quality: `${bitrate}kbps`,
+        qualityLabel: `MP3 - ${bitrate}kbps`,
+        hasAudio: true,
+        hasVideo: false,
+        filesize: baseFormat.filesize,
+        audioChannels: baseFormat.audioChannels,
+      });
+    }
+  }
+
+  return finalFormats;
 }
 
 // Parse yt-dlp subtitles to our subtitle structure
@@ -514,24 +586,8 @@ export async function downloadVideo(
 
   try {
     await fs.mkdir(tempDir, { recursive: true });
-
-    // Validate formatId against cached video info
-    const videoInfo = await getVideoInfo(videoId);
-    const validFormat = videoInfo.formats.find((f) => f.formatId === formatId);
-    if (
-      !validFormat ||
-      formatId.startsWith("placeholder-") ||
-      formatId.startsWith("fallback-")
-    ) {
-      throw new Error(
-        `Invalid or placeholder formatId: ${formatId}. Please select a valid format.`,
-      );
-    }
-
-    console.log(
-      `Attempting direct download for video ${videoId} with format ${formatId}`,
-    );
     try {
+      console.log(`Attempting direct download for video ${videoId}`);
       await downloadUsingDirectMethod(
         url,
         formatId,
@@ -541,14 +597,12 @@ export async function downloadVideo(
         subtitle,
         subtitleFormat,
       );
-      console.log(`Direct download succeeded for ${videoId}`);
       return outputStream;
-    } catch (directError) {
+    } catch (error) {
       console.warn(
-        `Direct download failed for ${videoId}:`,
-        directError.message,
+        `Direct download failed for ${videoId}, trying file method:`,
+        error,
       );
-      console.log(`Attempting file-based download for ${videoId}`);
       await downloadUsingFileMethod(
         url,
         formatId,
@@ -559,32 +613,18 @@ export async function downloadVideo(
         subtitle,
         subtitleFormat,
       );
-      console.log(`File-based download succeeded for ${videoId}`);
       return outputStream;
     }
   } catch (error) {
-    console.error(
-      `Download failed for ${videoId} with format ${formatId}:`,
-      error,
+    console.error(`Download failed for ${videoId}:`, error);
+    outputStream.emit(
+      "error",
+      new Error(
+        "Failed to download video. Please try a different format or video.",
+      ),
     );
-    const errorMessage = error.message.includes("HTTP Error 403")
-      ? "YouTube restrictions prevent this download"
-      : error.message.includes("Video unavailable")
-        ? "This video is unavailable or private"
-        : error.message.includes("Sign in to confirm your age")
-          ? "This video requires age verification"
-          : "Failed to download video. Please try a different format or video.";
-    outputStream.emit("error", new Error(errorMessage));
     outputStream.end();
     return outputStream;
-  } finally {
-    // Cleanup temp dir if empty
-    try {
-      const files = await fs.readdir(tempDir);
-      if (files.length === 0) await fs.rmdir(tempDir).catch(() => {});
-    } catch (e) {
-      console.warn(`Error cleaning up temp dir ${tempDir}:`, e);
-    }
   }
 }
 
@@ -745,10 +785,16 @@ async function downloadUsingDirectMethod(
     );
   }
 
-  try {
-    await executeYtdlp(args, outputStream);
-  } catch (error) {
-    throw new Error(`Direct download failed: ${error.message}`);
+  const { error, code } = await executeYtdlp(args);
+  if (code !== 0) {
+    const errorMessage = error.includes("HTTP Error 403")
+      ? "YouTube restrictions prevent this download"
+      : error.includes("Video unavailable")
+        ? "This video is unavailable or private"
+        : error.includes("Sign in to confirm your age")
+          ? "This video requires age verification"
+          : "Download failed";
+    throw new Error(errorMessage);
   }
 }
 
@@ -802,26 +848,23 @@ async function downloadUsingFileMethod(
     );
   }
 
-  try {
-    await executeYtdlp(args, undefined, true);
-    if (
-      !(await fs
-        .stat(tempFilePath)
-        .then((stat) => stat.size > 0)
-        .catch(() => false))
-    ) {
-      throw new Error("No data downloaded to temporary file");
-    }
-    const fileStream = await fs
-      .readFile(tempFilePath)
-      .then((data) => Readable.from(data));
-    await pipeline(fileStream, outputStream, async () => {
-      await fs
-        .unlink(tempFilePath)
-        .catch((err) => console.warn(`Error deleting ${tempFilePath}:`, err));
-    });
-  } catch (error) {
-    await fs.unlink(tempFilePath).catch(() => {});
-    throw new Error(`File download failed: ${error.message}`);
+  const { error, code } = await executeYtdlp(args, true);
+  if (
+    code !== 0 ||
+    !(await fs
+      .stat(tempFilePath)
+      .then((stat) => stat.size > 0)
+      .catch(() => false))
+  ) {
+    throw new Error(error || "Failed to download video to file");
   }
+
+  const fileStream = await fs
+    .readFile(tempFilePath)
+    .then((data) => Readable.from(data));
+  await pipeline(fileStream, outputStream, async () => {
+    await fs
+      .unlink(tempFilePath)
+      .catch((err) => console.warn(`Error deleting ${tempFilePath}:`, err));
+  });
 }
