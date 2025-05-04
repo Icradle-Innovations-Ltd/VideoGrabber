@@ -141,8 +141,26 @@ export async function getVideoInfo(
       throw new Error(`yt-dlp failed with code ${code}: ${error}`);
     }
 
-    const cleanedOutput = output.trim().split("\n").pop() || "";
-    const rawData = JSON.parse(cleanedOutput);
+    if (!output) {
+      throw new Error("No output received from yt-dlp");
+    }
+
+    const lines = output.trim().split("\n").filter(line => line.trim());
+    if (lines.length === 0) {
+      throw new Error("No valid output received from yt-dlp");
+    }
+
+    const lastLine = lines[lines.length - 1];
+    let rawData;
+    try {
+      rawData = JSON.parse(lastLine);
+    } catch (e) {
+      throw new Error("Failed to parse video information");
+    }
+
+    if (!rawData || typeof rawData !== 'object') {
+      throw new Error("Invalid video information received");
+    }
 
     const audioFormats = await generateAudioFormats(videoUrl);
     const allFormats = [...(rawData.formats || []), ...audioFormats];
