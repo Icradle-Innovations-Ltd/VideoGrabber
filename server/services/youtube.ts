@@ -320,9 +320,22 @@ export async function downloadVideo(options: DownloadOptions): Promise<Readable>
     }
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
+    
+    // First check if format is available
+    const { output: formatList } = await utils.executeYtdlp([
+      ...utils.getCommonArgs(url),
+      "--list-formats"
+    ]);
+
+    // Check if requested format is available
+    if (!formatList.includes(formatId)) {
+      throw new Error(`Format ${formatId} is not available. Available formats:\n${formatList}`);
+    }
+
     const args = [
       ...utils.getCommonArgs(url),
-      "-f", formatId,
+      "-f", `${formatId}+bestaudio[ext=m4a]/bestaudio/best`,
+      "--merge-output-format", "mp4",
       "-o", "-",
       "--fragment-retries", String(YTDLP_CONFIG.fragmentRetries),
       "--retry-sleep", String(YTDLP_CONFIG.retrySleep),
