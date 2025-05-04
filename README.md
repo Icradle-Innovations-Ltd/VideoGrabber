@@ -8,7 +8,7 @@ A modern, full-featured web application for downloading YouTube videos and playl
 - Single video downloads in multiple formats
 - Full playlist downloads with selection options
 - Custom video trimming (start/end time)
-- Multiple quality options (4K, 1080p, 720p, etc.)
+- Multiple quality options (4K, 1080p, 720p, 480p, 360p, 240p, 144p.)
 - Audio-only downloads in MP3 format
 - Subtitle/Caption downloads in multiple languages
 - Real-time download progress tracking
