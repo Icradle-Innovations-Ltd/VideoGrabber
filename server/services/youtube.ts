@@ -638,7 +638,8 @@ async function downloadUsingDirectMethod(
     const args = [
       "--no-playlist",
       "-f", formatId,
-      "-o", "-", // Output to stdout
+      "--merge-output-format", "mp4",
+      "-o", "%(title)s.%(ext)s", // Output with video title
       "--force-ipv4",
       "--geo-bypass",
       "--no-check-certificates",
@@ -736,6 +737,8 @@ async function downloadUsingFileMethod(
     const args = [
       "--no-playlist",
       "-f", formatId,
+      "--merge-output-format", "mp4",
+      "-o", tempFilePath,
       "--force-ipv4",
       "--geo-bypass",
       "--ignore-errors",
@@ -764,7 +767,6 @@ async function downloadUsingFileMethod(
     }
 
     // Add output path and URL
-    args.push("-o", tempFilePath);
     args.push(url);
 
     console.log("Starting file download with args:", args.join(" "));
