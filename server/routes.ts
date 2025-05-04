@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { videoInfoSchema, downloadOptionsSchema, playlistInfoSchema } from "@shared/schema";
-import { getVideoInfo, downloadVideo, getPlaylistInfo } from "./services/youtube";
+import { getVideoInfo, downloadVideo } from "./services/youtube";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get video information from YouTube
