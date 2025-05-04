@@ -108,7 +108,7 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
     <div>
       <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">{title}</h5>
       {formats.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {formats.map(format => (
             <button
               key={format.formatId}
