@@ -185,147 +185,41 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                 </div>
 
                 <div className="space-y-6">
-                  {/* VIDEO WITH AUDIO FORMATS */}
                   <div>
-                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">VIDEO WITH AUDIO</h5>
+                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Available Formats</h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {videoInfo.formats
-                        .filter(format => format.hasVideo && format.hasAudio && format.extension === 'mp4')
-                        .sort((a, b) => {
-                          // Extract resolution numbers for comparison
-                          const aRes = a.qualityLabel ? parseInt(a.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
-                          const bRes = b.qualityLabel ? parseInt(b.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
-                          return bRes - aRes; // Higher resolution first
-                        })
-                        .filter(format => {
-                          const res = parseInt(format.qualityLabel?.match(/\d+/)?.[0] || '0');
-                          return [4320, 2160, 1440, 1080, 720, 480, 360, 240, 144].includes(res);
-                        })
-                        .map((format) => (
-                          <div
-                            key={format.formatId}
-                            className={`border dark:border-gray-700 rounded-md p-3 cursor-pointer hover:border-primary dark:hover:border-primary transition-colors ${
-                              selectedFormat === format.formatId
-                                ? "border-primary bg-primary/5 dark:bg-primary/10"
-                                : ""
-                            }`}
-                            onClick={() => setSelectedFormat(format.formatId)}
-                          >
-                            <div className="flex items-center">
-                              <FileVideo className="h-5 w-5 mr-2" />
-                              <div>
-                                <div className="font-medium">{getFormatLabel(format)}</div>
-                                <div className="text-xs text-accent dark:text-gray-400">
-                                  {formatFileSize(format.filesize)}
+                      {Array.from(new Set(videoInfo.formats.map(format => `${format.extension}-${format.qualityLabel || format.quality}-${format.hasAudio}-${format.hasVideo}`))).map(uniqueFormat => {
+                          const format = videoInfo.formats.find(f => `${f.extension}-${f.qualityLabel || f.quality}-${f.hasAudio}-${f.hasVideo}` === uniqueFormat);
+                          if (format){
+                            return (
+                              <div
+                                key={format.formatId}
+                                className={`border dark:border-gray-700 rounded-md p-3 cursor-pointer hover:border-primary dark:hover:border-primary transition-colors ${
+                                  selectedFormat === format.formatId
+                                    ? "border-primary bg-primary/5 dark:bg-primary/10"
+                                    : ""
+                                }`}
+                                onClick={() => setSelectedFormat(format.formatId)}
+                              >
+                                <div className="flex items-center">
+                                  {getFormatIcon(format)}
+                                  <div>
+                                    <div className="font-medium">{getFormatLabel(format)}</div>
+                                    <div className="text-xs text-accent dark:text-gray-400">
+                                      {formatFileSize(format.filesize)}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-
-                  {/* AUDIO ONLY FORMATS */}
-                  <div>
-                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">AUDIO ONLY (MP3)</h5>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {videoInfo.formats
-                        .filter(format => !format.hasVideo && format.hasAudio)
-                        .sort((a, b) => b.filesize - a.filesize)
-                        .map(format => ({
-                          ...format,
-                          qualityLabel: format.filesize > 10000000 ? 'MP3 - 320kbps' : 'MP3 - 128kbps'
-                        }))
-                        .map((format) => (
-                          <div
-                            key={format.formatId}
-                            className={`border dark:border-gray-700 rounded-md p-3 cursor-pointer hover:border-primary dark:hover:border-primary transition-colors ${
-                              selectedFormat === format.formatId
-                                ? "border-primary bg-primary/5 dark:bg-primary/10"
-                                : ""
-                            }`}
-                            onClick={() => setSelectedFormat(format.formatId)}
-                          >
-                            <div className="flex items-center">
-                              <FileAudio className="h-4 w-4 mr-2" />
-                              <span>{format.qualityLabel}</span>
-                            </div>
-                          </div>
-                        ))}
+                            );
+                          }
+                          return null;
+                        })}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-6">
-
-                  {/* Format selection section */}
-                  <div className="space-y-6">
-                    {/* VIDEO WITH AUDIO FORMATS */}
-                    <div>
-                      <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">VIDEO WITH AUDIO</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {videoInfo.formats
-                          .filter(format => format.hasVideo && format.hasAudio)
-                          .sort((a, b) => {
-                            // Extract resolution numbers for comparison
-                            const aRes = a.qualityLabel ? parseInt(a.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
-                            const bRes = b.qualityLabel ? parseInt(b.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
-                            return bRes - aRes; // Higher resolution first
-                          })
-                          .map((format) => (
-                            <div
-                              key={format.formatId}
-                              className={`border dark:border-gray-700 rounded-md p-3 cursor-pointer hover:border-primary dark:hover:border-primary transition-colors ${
-                                selectedFormat === format.formatId
-                                  ? "border-primary bg-primary/5 dark:bg-primary/10"
-                                  : ""
-                              }`}
-                              onClick={() => setSelectedFormat(format.formatId)}
-                            >
-                              <div className="flex items-center">
-                                {getFormatIcon(format)}
-                                <div>
-                                  <div className="font-medium">{getFormatLabel(format)}</div>
-                                  <div className="text-xs text-accent dark:text-gray-400">
-                                    {formatFileSize(format.filesize)}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-
-                    {/* AUDIO ONLY FORMATS */}
-                    <div className="mt-4">
-                      <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">AUDIO ONLY (MP3)</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {videoInfo.formats
-                          .filter(format => !format.hasVideo && format.hasAudio && format.extension === 'mp3')
-                          .sort((a, b) => b.filesize - a.filesize)
-                          .map(format => ({
-                            ...format,
-                            qualityLabel: format.filesize > 10000000 ? 'MP3 - 320kbps' : 'MP3 - 128kbps'
-                          }))
-                          .map((format) => (
-                            <div
-                              key={format.formatId}
-                              className={`border dark:border-gray-700 rounded-md p-3 cursor-pointer hover:border-primary dark:hover:border-primary transition-colors ${
-                                selectedFormat === format.formatId
-                                  ? "border-primary bg-primary/5 dark:bg-primary/10"
-                                  : ""
-                              }`}
-                              onClick={() => setSelectedFormat(format.formatId)}
-                            >
-                              <div className="flex items-center">
-                                <FileAudio className="h-4 w-4 mr-2" />
-                                <span>{format.qualityLabel}</span>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
