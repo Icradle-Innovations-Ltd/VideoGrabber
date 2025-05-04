@@ -49,7 +49,13 @@ export async function getVideoInfo(videoId: string, url?: string): Promise<Video
         "--no-playlist",
         "--force-ipv4",
         "--geo-bypass",
+        "--extractor-retries", "5",
+        "--ignore-errors",
         "--no-check-certificates",
+        "--prefer-insecure",
+        "--no-warnings",
+        "--skip-download",
+        "--all-formats", // Get all available formats including high quality ones
         videoUrl
       ]);
 
@@ -110,7 +116,11 @@ async function getVideoWithPlaylistInfo(videoId: string, videoUrl: string, playl
       "--flat-playlist", // Don't download the videos, just get the playlist info
       "--force-ipv4",
       "--geo-bypass",
+      "--extractor-retries", "5",
+      "--ignore-errors",
       "--no-check-certificates",
+      "--prefer-insecure",
+      "--no-warnings",
       `https://www.youtube.com/playlist?list=${playlistId}`
     ]);
 
@@ -189,7 +199,11 @@ export async function getPlaylistInfo(playlistId: string): Promise<PlaylistInfo>
       "--flat-playlist", // Don't download the videos, just get the playlist info
       "--force-ipv4",
       "--geo-bypass",
+      "--extractor-retries", "5",
+      "--ignore-errors",
       "--no-check-certificates",
+      "--prefer-insecure",
+      "--no-warnings",
       `https://www.youtube.com/playlist?list=${playlistId}`
     ]);
 
