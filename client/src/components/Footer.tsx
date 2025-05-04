@@ -1,6 +1,7 @@
 
 import { Link } from "wouter";
-import { Github, Facebook, Twitter, LinkedinIcon, BrandTiktok } from "lucide-react";
+import { Github, Facebook, Twitter, LinkedinIcon } from "lucide-react";
+import { TiktokIcon } from "./icons/TiktokIcon";
 import { Button } from "./ui/button";
 
 export function Footer() {
@@ -43,7 +44,7 @@ export function Footer() {
           </Button>
           <Button variant="ghost" size="icon" asChild>
             <a href="https://tiktok.com/@icradleinnovations" target="_blank" rel="noopener noreferrer">
-              <BrandTiktok className="h-5 w-5" />
+              <TiktokIcon className="h-5 w-5" />
               <span className="sr-only">TikTok</span>
             </a>
           </Button>
