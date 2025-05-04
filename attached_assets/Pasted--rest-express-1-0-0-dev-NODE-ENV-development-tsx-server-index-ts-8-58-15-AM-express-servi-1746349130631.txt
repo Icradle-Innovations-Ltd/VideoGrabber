@@ -1,0 +1,90 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+8:58:15 AM [express] serving on port 5000
+Error:   Failed to scan for dependencies from entries:
+  /home/runner/workspace/client/index.html
+
+  ✘ [ERROR] The character "}" is not valid inside a JSX element
+
+    client/src/pages/Contact.tsx:36:0:
+      36 │ }
+         │ ^
+         ╵ {'}'}
+
+  Did you mean to escape it as "{'}'}" instead?
+
+
+✘ [ERROR] Unexpected end of file before a closing fragment tag
+
+    client/src/pages/Contact.tsx:37:0:
+      37 │ 
+         │ ^
+         ╵ </>
+
+  The opening fragment tag is here:
+
+    client/src/pages/Contact.tsx:11:5:
+      11 │     <>
+         ╵      ^
+
+
+✘ [ERROR] The character "}" is not valid inside a JSX element
+
+    client/src/pages/Privacy.tsx:31:0:
+      31 │ }
+         │ ^
+         ╵ {'}'}
+
+  Did you mean to escape it as "{'}'}" instead?
+
+
+✘ [ERROR] Unexpected end of file before a closing fragment tag
+
+    client/src/pages/Privacy.tsx:32:0:
+      32 │ 
+         │ ^
+         ╵ </>
+
+  The opening fragment tag is here:
+
+    client/src/pages/Privacy.tsx:8:5:
+      8 │     <>
+        ╵      ^
+
+
+✘ [ERROR] The character "}" is not valid inside a JSX element
+
+    client/src/pages/not-found.tsx:25:0:
+      25 │ }
+         │ ^
+         ╵ {'}'}
+
+  Did you mean to escape it as "{'}'}" instead?
+
+
+✘ [ERROR] Unexpected end of file before a closing fragment tag
+
+    client/src/pages/not-found.tsx:26:0:
+      26 │ 
+         │ ^
+         ╵ </>
+
+  The opening fragment tag is here:
+
+    client/src/pages/not-found.tsx:8:5:
+      8 │     <>
+        ╵      ^
+
+
+    at failureErrorWithLog (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1472:15)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:945:25
+    at runOnEndCallbacks (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:1315:45)
+    at buildResponseToResult (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:943:7)
+    at /home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:955:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:954:54)
+    at handleRequest (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:647:17)
+    at handleIncomingPacket (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:672:7)
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/vite/node_modules/esbuild/lib/main.js:600:7)
