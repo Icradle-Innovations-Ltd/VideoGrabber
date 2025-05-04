@@ -332,10 +332,12 @@ export async function downloadVideo(options: DownloadOptions): Promise<Readable>
       throw new Error(`Format ${formatId} is not available. Available formats:\n${formatList}`);
     }
 
+    // Handle audio-only formats differently
+    const isAudioOnly = formatId.startsWith('audio-mp3');
     const args = [
       ...utils.getCommonArgs(url),
-      "-f", `${formatId}+bestaudio[ext=m4a]/bestaudio/best`,
-      "--merge-output-format", "mp4",
+      "-f", isAudioOnly ? "bestaudio" : `${formatId}+bestaudio[ext=m4a]/bestaudio/best`,
+      ...(isAudioOnly ? ["--extract-audio", "--audio-format", "mp3", "--audio-quality", "0"] : ["--merge-output-format", "mp4"]),
       "-o", "-",
       "--fragment-retries", String(YTDLP_CONFIG.fragmentRetries),
       "--retry-sleep", String(YTDLP_CONFIG.retrySleep),
