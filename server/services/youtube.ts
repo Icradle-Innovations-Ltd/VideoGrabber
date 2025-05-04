@@ -65,9 +65,10 @@ export async function getVideoInfo(videoId: string, url?: string): Promise<Video
         "--add-header", "Accept-Language:en-US,en;q=0.9",
         "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "--add-header", "Accept-Encoding:gzip, deflate, br",
-        "--cookies-from-browser", "chrome",
-        "--cookies", "/tmp/youtube.com_cookies.txt",
-        "--mark-watched",
+        "--geo-bypass",
+        "--no-cache-dir",
+        "--extractor-args", "youtube:player_client=web",
+        "--no-check-certificates",
         videoUrl
       ]);
 
