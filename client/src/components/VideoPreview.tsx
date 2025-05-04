@@ -185,11 +185,16 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                 </div>
 
                 <div className="space-y-6">
+                  {/* Video with Audio */}
                   <div>
-                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Video with Audio</h5>
+                    <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">Video with Audio (MP4)</h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {videoInfo.formats
-                        .filter(f => f.hasVideo && f.hasAudio)
+                        .filter(f => f.hasVideo && f.hasAudio && f.extension === 'mp4')
+                        .filter(f => {
+                          const res = f.qualityLabel ? parseInt(f.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
+                          return [144, 240, 360, 480, 720, 1080, 2160].includes(res);
+                        })
                         .sort((a, b) => {
                           const aRes = a.qualityLabel ? parseInt(a.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
                           const bRes = b.qualityLabel ? parseInt(b.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
