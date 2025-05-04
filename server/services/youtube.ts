@@ -336,13 +336,12 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
   // Process the formats
   const formats = ytDlpFormats
     .filter(format => {
-      // Include all MP4 video formats and MP3 audio formats
+      // Filter for MP4 videos and MP3 audio only
       const isMP4 = format.ext === 'mp4';
-      const isMP3 = format.ext === 'mp3' || format.ext === 'm4a';
-      const isValidFormat = isMP4 || isMP3;
+      const isMP3 = format.ext === 'mp3';
       
-      // Include the format if it's either video or audio
-      return isValidFormat && (format.vcodec !== 'none' || format.acodec !== 'none');
+      // Include MP4 videos (with or without audio) and MP3 audio
+      return (isMP4 && format.vcodec !== 'none') || (isMP3 && format.acodec !== 'none');
     })
     .map(format => {
       // Determine actual resolution and quality label
@@ -353,17 +352,33 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
 
       // Create better quality labels based on resolution for videos
       if (hasVideo && height > 0) {
-        qualityLabel = `${height}p`;
-        
-        // Add quality suffix
-        if (height >= 2160) qualityLabel += " 4K";
-        else if (height >= 1440) qualityLabel += " 2K";
-        else if (height >= 1080) qualityLabel += " Full HD";
-        else if (height >= 720) qualityLabel += " HD";
-        
-        // Add audio info if present
         if (hasAudio) {
+          qualityLabel = `MP4 - ${height}p`;
+          if (height >= 2160) qualityLabel += " 4K";
+          else if (height >= 1440) qualityLabel += " 2K";
+          else if (height >= 1080) qualityLabel += " Full HD";
+          else if (height >= 720) qualityLabel += " HD";
           qualityLabel += " with Audio";
+        } else {
+          qualityLabel = `MP4 - ${height}p`;
+          if (height >= 2160) qualityLabel += " 4K";
+          else if (height >= 1440) qualityLabel += " 2K";
+          else if (height >= 1080) qualityLabel += " Full HD";
+          else if (height >= 720) qualityLabel += " HD";
+          qualityLabel += " (Video Only)";
+        }
+      }
+      // For audio-only formats
+      else if (!hasVideo && hasAudio && format.ext === 'mp3') {
+        const audioBitrate = format.abr || 0;
+        if (audioBitrate >= 320) {
+          qualityLabel = "MP3 - 320kbps";
+        } else if (audioBitrate >= 256) {
+          qualityLabel = "MP3 - 256kbps";
+        } else if (audioBitrate >= 192) {
+          qualityLabel = "MP3 - 192kbps";
+        } else {
+          qualityLabel = "MP3 - 128kbps";
         }
       } 
       // For audio-only formats
