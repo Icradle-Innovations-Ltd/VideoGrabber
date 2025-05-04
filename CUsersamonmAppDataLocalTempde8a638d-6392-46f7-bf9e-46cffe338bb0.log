@@ -1,0 +1,20 @@
+<<<<<<< HEAD
+// Helper function to execute yt-dlp with common arguments
+async function executeYtdlp(
+  args: string[],
+  outputToFile = false,
+): Promise<{ output: string; error: string; code: number }> {
+--
+<<<<<<< HEAD
+    ytDlp.on("error", (error) => {
+      console.error(`Failed to start yt-dlp: ${error.message}`);
+      reject(new Error(`Failed to start yt-dlp: ${error.message}`));
+    });
+=======
+--
+<<<<<<< HEAD
+// Helper function to execute ffmpeg with common arguments
+async function executeFfmpeg(
+  args: string[],
+): Promise<{ output: string; error: string; code: number }> {
+  return new Promise((resolve, reject) => {
