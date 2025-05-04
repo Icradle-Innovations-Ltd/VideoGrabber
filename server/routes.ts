@@ -78,6 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Set appropriate headers
       res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader("Transfer-Encoding", "chunked");
       
       // Generate filename based on whether it's a playlist or single video
       let filename;
