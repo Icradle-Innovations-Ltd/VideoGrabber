@@ -7,17 +7,17 @@ export default function Navigation() {
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           <Link href="/">
-            <a className="text-xl font-bold hover:text-primary">YouTube Downloader</a>
+            <span className="text-xl font-bold hover:text-primary cursor-pointer">YouTube Downloader</span>
           </Link>
           <div className="flex gap-4">
             <Link href="/terms">
-              <a className="hover:text-primary">Terms</a>
+              <span className="hover:text-primary cursor-pointer">Terms</span>
             </Link>
             <Link href="/privacy">
-              <a className="hover:text-primary">Privacy</a>
+              <span className="hover:text-primary cursor-pointer">Privacy</span>
             </Link>
             <Link href="/contact">
-              <a className="hover:text-primary">Contact</a>
+              <span className="hover:text-primary cursor-pointer">Contact</span>
             </Link>
           </div>
         </div>
