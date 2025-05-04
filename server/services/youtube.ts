@@ -386,7 +386,7 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
         filesize: format.filesize || format.filesize_approx || 
                   // Estimate filesize for formats that don't report it
                   (hasVideo ? (height * height * 60) : 3000000), 
-        audioChannels: format.audio_channels,
+        audioChannels: format.audio_channels || 2, // Default to stereo if not specified
       };
     });
 
