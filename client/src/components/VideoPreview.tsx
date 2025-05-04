@@ -190,12 +190,16 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                     <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">VIDEO WITH AUDIO</h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {videoInfo.formats
-                        .filter(format => format.hasVideo && format.hasAudio)
+                        .filter(format => format.hasVideo && format.hasAudio && format.extension === 'mp4')
                         .sort((a, b) => {
                           // Extract resolution numbers for comparison
                           const aRes = a.qualityLabel ? parseInt(a.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
                           const bRes = b.qualityLabel ? parseInt(b.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
                           return bRes - aRes; // Higher resolution first
+                        })
+                        .filter(format => {
+                          const res = parseInt(format.qualityLabel?.match(/\d+/)?.[0] || '0');
+                          return [4320, 2160, 1440, 1080, 720, 480, 360, 240, 144].includes(res);
                         })
                         .map((format) => (
                           <div
