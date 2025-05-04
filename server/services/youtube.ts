@@ -303,11 +303,14 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
     "240p": { height: 240, label: "240p" },
     "360p": { height: 360, label: "360p" },
     "480p": { height: 480, label: "480p" },
-    "720p": { height: 720, label: "720p HD" },
-    "1080p": { height: 1080, label: "1080p FullHD" },
-    "1440p": { height: 1440, label: "1440p QHD" },
-    "2160p": { height: 2160, label: "2160p 4K" },
-    "4320p": { height: 4320, label: "4320p 8K" }
+    "720p": { height: 720, label: "720p" },
+    "1080p": { height: 1080, label: "1080p" },
+    "2160p": { height: 2160, label: "4K" }
+  };
+
+  const audioQualities = {
+    "320": "MP3 - 320kbps",
+    "128": "MP3 - 128kbps"
   };
 
   // Sort formats by resolution and quality
@@ -328,16 +331,15 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
 
   // Process the formats
   const formats = ytDlpFormats
-    .filter(format => 
-      // Filter out formats with no filesize or very small files
-      (format.filesize && format.filesize > 1000) || 
-      // Include formats with estimated filesize
-      (format.filesize_approx && format.filesize_approx > 1000) ||
-      // Include formats even if we don't know filesize (sometimes it's not reported)
-      (!format.filesize && !format.filesize_approx && 
-       ((format.vcodec && format.vcodec !== "none") || 
-        (format.acodec && format.acodec !== "none")))
-    )
+    .filter(format => {
+      // Filter MP4 video formats and MP3 audio formats only
+      const isMP4 = format.ext === 'mp4';
+      const isMP3 = format.ext === 'mp3';
+      const hasValidHeight = format.height && Object.values(standardResolutions).some(res => res.height === format.height);
+      const hasValidAudioBitrate = format.abr && Object.keys(audioQualities).includes(Math.round(format.abr).toString());
+      
+      return (isMP4 && hasValidHeight) || (isMP3 && hasValidAudioBitrate);
+    })
     .map(format => {
       // Determine actual resolution and quality label
       let qualityLabel = format.format_note || "";
