@@ -8,19 +8,19 @@ export function Footer() {
           </p>
           <div className="flex space-x-4">
             <a
-              href="#"
+              href="/terms"
               className="text-accent dark:text-gray-400 hover:text-foreground dark:hover:text-white transition-colors"
             >
               Terms
             </a>
             <a
-              href="#"
+              href="/privacy"
               className="text-accent dark:text-gray-400 hover:text-foreground dark:hover:text-white transition-colors"
             >
               Privacy
             </a>
             <a
-              href="#"
+              href="/contact"
               className="text-accent dark:text-gray-400 hover:text-foreground dark:hover:text-white transition-colors"
             >
               Contact
