@@ -108,7 +108,7 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
     <div>
       <h5 className="text-sm font-medium mb-2 text-gray-500 dark:text-gray-400">{title}</h5>
       {formats.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {formats.map(format => (
             <button
               key={format.formatId}
@@ -118,8 +118,50 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                   ? "border-primary bg-primary/5 dark:bg-primary/10"
                   : ""
               }`}
-              onClick={() => setSelectedFormat(format.formatId)}
-              aria-label={`Select ${format.qualityLabel} ${title}`}
+              onClick={async () => {
+                setSelectedFormat(format.formatId);
+                try {
+                  if (!videoInfo) return;
+                  
+                  const response = await fetch('/api/videos/download', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      videoId: videoInfo.id,
+                      formatId: format.formatId,
+                    }),
+                  });
+
+                  if (!response.ok) throw new Error('Download failed');
+
+                  // Create a blob from the response
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  
+                  // Create a temporary link and trigger download
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${videoInfo.title}.${format.extension}`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+
+                  toast({
+                    title: "Download Started",
+                    description: "Your download has been initiated",
+                  });
+                } catch (error) {
+                  toast({
+                    title: "Download Failed",
+                    description: "Failed to start download. Please try again.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              aria-label={`Download ${format.qualityLabel} ${title}`}
             >
               <div className="flex items-center">
                 {getFormatIcon(format)}
@@ -140,9 +182,9 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
   );
 
   return (
-    <section className="mb-8" aria-label="Video preview and download options">
-      <Card className="max-w-3xl mx-auto">
-        <CardContent className="p-4 md:p-6">
+    <section className="mb-4 sm:mb-8" aria-label="Video preview and download options">
+      <Card className="w-full bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <CardContent className="p-3 sm:p-4 md:p-6">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-8" aria-live="polite">
               <Loader2 className="h-12 w-12 animate-spin text-primary" aria-hidden="true" />
