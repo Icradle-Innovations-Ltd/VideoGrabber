@@ -91,7 +91,9 @@ export async function getVideoInfo(videoId: string, url?: string): Promise<Video
         }
 
         try {
-          const rawData = JSON.parse(outputData);
+          // Clean the output data to ensure it's valid JSON
+          const cleanedOutput = outputData.trim().split('\n').pop() || '';
+          const rawData = JSON.parse(cleanedOutput);
           
           // Transform yt-dlp output to our VideoInfo format
           const videoInfo: VideoInfo = {
@@ -111,7 +113,8 @@ export async function getVideoInfo(videoId: string, url?: string): Promise<Video
           resolve(videoInfo);
         } catch (error) {
           console.error("Error parsing yt-dlp output:", error);
-          reject(new Error("Failed to parse video information"));
+          console.error("Raw output:", outputData);
+          reject(new Error("Failed to parse video information. Please try again."));
         }
       });
     });
