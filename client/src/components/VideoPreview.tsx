@@ -118,8 +118,50 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                   ? "border-primary bg-primary/5 dark:bg-primary/10"
                   : ""
               }`}
-              onClick={() => setSelectedFormat(format.formatId)}
-              aria-label={`Select ${format.qualityLabel} ${title}`}
+              onClick={async () => {
+                setSelectedFormat(format.formatId);
+                try {
+                  if (!videoInfo) return;
+                  
+                  const response = await fetch('/api/videos/download', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      videoId: videoInfo.id,
+                      formatId: format.formatId,
+                    }),
+                  });
+
+                  if (!response.ok) throw new Error('Download failed');
+
+                  // Create a blob from the response
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  
+                  // Create a temporary link and trigger download
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${videoInfo.title}.${format.extension}`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+
+                  toast({
+                    title: "Download Started",
+                    description: "Your download has been initiated",
+                  });
+                } catch (error) {
+                  toast({
+                    title: "Download Failed",
+                    description: "Failed to start download. Please try again.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              aria-label={`Download ${format.qualityLabel} ${title}`}
             >
               <div className="flex items-center">
                 {getFormatIcon(format)}
