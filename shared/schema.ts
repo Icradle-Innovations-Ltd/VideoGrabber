@@ -76,6 +76,8 @@ export const downloadOptionsSchema = z.object({
   end: z.number().optional(),
   subtitle: z.string().optional(),
   subtitleFormat: z.string().optional(),
+  downloadAudio: z.boolean().optional(),
+  downloadCaptions: z.boolean().optional(),
   isPlaylist: z.boolean().optional(),
   playlistItems: z.array(z.string()).optional()
 });

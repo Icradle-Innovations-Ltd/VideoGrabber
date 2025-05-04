@@ -16,6 +16,8 @@ interface Format {
   hasVideo: boolean;
   filesize: number;
   audioChannels?: number;
+  downloadAudio?: boolean;
+  downloadCaptions?: boolean;
 }
 
 interface Subtitle {
