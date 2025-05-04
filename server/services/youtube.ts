@@ -336,13 +336,13 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
   // Process the formats
   const formats = ytDlpFormats
     .filter(format => {
-      // Filter MP4 video formats and MP3 audio formats only
+      // Include all MP4 video formats and MP3 audio formats
       const isMP4 = format.ext === 'mp4';
-      const isMP3 = format.ext === 'mp3';
-      const hasValidHeight = format.height && Object.values(standardResolutions).some(res => res.height === format.height);
-      const hasValidAudioBitrate = format.abr && Object.keys(audioQualities).includes(Math.round(format.abr).toString());
+      const isMP3 = format.ext === 'mp3' || format.ext === 'm4a';
+      const isValidFormat = isMP4 || isMP3;
       
-      return (isMP4 && hasValidHeight) || (isMP3 && hasValidAudioBitrate);
+      // Include the format if it's either video or audio
+      return isValidFormat && (format.vcodec !== 'none' || format.acodec !== 'none');
     })
     .map(format => {
       // Determine actual resolution and quality label
@@ -353,24 +353,23 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
 
       // Create better quality labels based on resolution for videos
       if (hasVideo && height > 0) {
-        // Find the closest standard resolution
-        let closestRes = "";
-        let minDiff = Infinity;
-
-        for (const res in standardResolutions) {
-          const resInfo = standardResolutions[res as keyof typeof standardResolutions];
-          const diff = Math.abs(resInfo.height - height);
-          if (diff < minDiff) {
-            minDiff = diff;
-            closestRes = res;
-          }
+        qualityLabel = `${height}p`;
+        
+        // Add quality suffix
+        if (height >= 2160) qualityLabel += " 4K";
+        else if (height >= 1440) qualityLabel += " 2K";
+        else if (height >= 1080) qualityLabel += " Full HD";
+        else if (height >= 720) qualityLabel += " HD";
+        
+        // Add audio info if present
+        if (hasAudio) {
+          qualityLabel += " with Audio";
         }
-
-        if (closestRes) {
-          qualityLabel = standardResolutions[closestRes as keyof typeof standardResolutions].label;
-        } else {
-          qualityLabel = `${height}p`;
-        }
+      } 
+      // For audio-only formats
+      else if (!hasVideo && hasAudio) {
+        const audioBitrate = format.abr || 128;
+        qualityLabel = `MP3 - ${Math.round(audioBitrate)}kbps`;
       } 
       // For audio-only formats, use better labels
       else if (!hasVideo && hasAudio) {
