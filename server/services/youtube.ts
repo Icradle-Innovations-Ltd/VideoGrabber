@@ -58,7 +58,10 @@ export async function getVideoInfo(videoId: string, url?: string): Promise<Video
         "--format-sort", "height:1080,res,+size,+br,+proto",
         "--format-sort-force",
         "--all-formats",
-        "--format", "bestvideo[height<=2160][ext=mp4]+bestaudio[ext=m4a]/best[height<=2160][ext=mp4]/best",
+        "--format", "bestvideo[height<=2160][ext=mp4]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "--extract-audio",
+        "--audio-format", "mp3",
+        "--audio-quality", "0",
         "--write-subs",
         "--write-auto-subs",
         "--sub-langs", "all",
@@ -303,14 +306,15 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
     "240p": { height: 240, label: "240p" },
     "360p": { height: 360, label: "360p" },
     "480p": { height: 480, label: "480p" },
-    "720p": { height: 720, label: "720p" },
-    "1080p": { height: 1080, label: "1080p" },
-    "2160p": { height: 2160, label: "4K" }
+    "720p": { height: 720, label: "720p HD" },
+    "1080p": { height: 1080, label: "1080p Full HD" },
+    "1440p": { height: 1440, label: "1440p 2K" },
+    "2160p": { height: 2160, label: "2160p 4K" }
   };
 
   const audioQualities = {
-    "320": "MP3 - 320kbps",
-    "128": "MP3 - 128kbps"
+    "320": "MP3 - 320kbps High Quality",
+    "128": "MP3 - 128kbps Standard"
   };
 
   // Sort formats by resolution and quality
