@@ -36,30 +36,36 @@ function extractPlaylistId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-// Helper function to execute yt-dlp with common arguments
+// Helper function to execute yt-dlp with streaming support
 async function executeYtdlp(
   args: string[],
+  outputStream?: PassThrough,
   outputToFile = false,
-): Promise<{ output: string; error: string; code: number }> {
+): Promise<{ error: string; code: number }> {
   return new Promise((resolve, reject) => {
     const ytDlp = spawn("yt-dlp", args);
-    let outputData = "";
     let errorData = "";
-
-    ytDlp.stdout.on("data", (data) => {
-      outputData += data.toString();
-    });
 
     ytDlp.stderr.on("data", (data) => {
       errorData += data.toString();
+      console.error(`yt-dlp stderr: ${data.toString()}`);
     });
+
+    if (outputStream && !outputToFile) {
+      ytDlp.stdout.pipe(outputStream);
+    } else if (outputToFile) {
+      // Handle file output separately if needed
+    }
 
     ytDlp.on("error", (error) => {
       reject(new Error(`Failed to start yt-dlp: ${error.message}`));
     });
 
     ytDlp.on("close", (code) => {
-      resolve({ output: outputData, error: errorData, code });
+      if (code !== 0) {
+        reject(new Error(`yt-dlp failed with code ${code}: ${errorData}`));
+      }
+      resolve({ error: errorData, code });
     });
   });
 }
@@ -70,7 +76,6 @@ export async function getVideoInfo(
   url?: string,
 ): Promise<VideoInfo> {
   try {
-    // Check cache first
     const cachedInfo = await storage.getCachedVideoInfo(videoId);
     if (cachedInfo) {
       console.log(`Returning cached video info for videoId: ${videoId}`);
@@ -80,7 +85,6 @@ export async function getVideoInfo(
     const videoUrl = url || `https://www.youtube.com/watch?v=${videoId}`;
     const playlistId = extractPlaylistId(videoUrl);
 
-    // Handle playlist if present
     if (playlistId) {
       try {
         const videoInfo = await getVideoWithPlaylistInfo(
@@ -98,7 +102,6 @@ export async function getVideoInfo(
       }
     }
 
-    // Common yt-dlp arguments for video info
     const args = [
       "--dump-json",
       "--no-playlist",
@@ -110,12 +113,12 @@ export async function getVideoInfo(
       "--no-check-certificates",
       "--no-warnings",
       "--skip-download",
-      "--list-formats", // Ensure we get all formats
+      "--list-formats",
       "--extract-audio",
       "--audio-format",
       "mp3",
       "--audio-quality",
-      "0", // Best quality, we'll generate others manually
+      "0",
       "--write-subs",
       "--write-auto-subs",
       "--sub-langs",
@@ -141,10 +144,7 @@ export async function getVideoInfo(
     const cleanedOutput = output.trim().split("\n").pop() || "";
     const rawData = JSON.parse(cleanedOutput);
 
-    // Generate additional audio formats at different bitrates
     const audioFormats = await generateAudioFormats(videoUrl);
-
-    // Combine video and audio formats
     const allFormats = [...(rawData.formats || []), ...audioFormats];
 
     const videoInfo: VideoInfo = {
@@ -165,9 +165,7 @@ export async function getVideoInfo(
     return videoInfo;
   } catch (error) {
     console.error(`Error fetching video info for ${videoId}:`, error);
-    throw new Error(
-      `Failed to get video info: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
+    throw error;
   }
 }
 
@@ -223,7 +221,7 @@ async function generateAudioFormats(videoUrl: string): Promise<any[]> {
       format_note: `${bitrate}kbps`,
       abr: parseInt(bitrate),
       filesize:
-        rawData.filesize || (rawData.duration * parseInt(bitrate) * 1000) / 8, // Estimate filesize
+        rawData.filesize || (rawData.duration * parseInt(bitrate) * 1000) / 8,
     };
 
     audioFormats.push(audioFormat);
@@ -396,7 +394,9 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
       }
 
       return {
-        formatId: format.format_id,
+        formatId:
+          format.format_id ||
+          `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         extension: format.ext || "unknown",
         quality: format.format_note || "unknown",
         qualityLabel,
@@ -406,7 +406,7 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
           format.filesize ||
           format.filesize_approx ||
           (hasVideo ? height * height * 60 : 3000000),
-        audioChannels: format.audio_channels || 2,
+        audioChannels: format.audioChannels || 2,
       };
     })
     .sort((a, b) => {
@@ -431,97 +431,7 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
     }
   }
 
-  // Ensure all desired formats are present
-  const finalFormats: VideoInfo["formats"] = [];
-  const videoWithAudioFormats = uniqueFormats.filter(
-    (f) => f.hasVideo && f.hasAudio,
-  );
-  const videoOnlyFormats = uniqueFormats.filter(
-    (f) => f.hasVideo && !f.hasAudio,
-  );
-  const audioOnlyFormats = uniqueFormats.filter(
-    (f) => !f.hasVideo && f.hasAudio,
-  );
-
-  // Ensure all video with audio resolutions
-  for (const res of standardResolutions) {
-    const height = parseInt(res);
-    const existing = videoWithAudioFormats.find(
-      (f) =>
-        f.hasVideo &&
-        f.hasAudio &&
-        parseInt(f.qualityLabel.match(/\d+p/)?.[0] || "0") === height,
-    );
-    if (existing) {
-      finalFormats.push(existing);
-    } else {
-      // Fallback: Create a placeholder format if not found
-      const baseFormat = videoWithAudioFormats[0] || videoOnlyFormats[0];
-      if (baseFormat) {
-        finalFormats.push({
-          ...baseFormat,
-          formatId: `placeholder-${res}-audio`,
-          qualityLabel: `MP4 - ${res} with Audio${height >= 2160 ? " 4K" : height >= 1440 ? " 2K" : height >= 1080 ? " Full HD" : height >= 720 ? " HD" : ""}`,
-          filesize: height * height * 60,
-          hasAudio: true,
-        });
-      }
-    }
-  }
-
-  // Ensure all video only resolutions
-  for (const res of standardResolutions) {
-    const height = parseInt(res);
-    const existing = videoOnlyFormats.find(
-      (f) =>
-        f.hasVideo &&
-        !f.hasAudio &&
-        parseInt(f.qualityLabel.match(/\d+p/)?.[0] || "0") === height,
-    );
-    if (existing) {
-      finalFormats.push(existing);
-    } else {
-      // Fallback: Create a placeholder format if not found
-      const baseFormat = videoOnlyFormats[0] || videoWithAudioFormats[0];
-      if (baseFormat) {
-        finalFormats.push({
-          ...baseFormat,
-          formatId: `placeholder-${res}-video`,
-          qualityLabel: `MP4 - ${res} (Video Only)${height >= 2160 ? " 4K" : height >= 1440 ? " 2K" : height >= 1080 ? " Full HD" : height >= 720 ? " HD" : ""}`,
-          filesize: height * height * 60,
-          hasAudio: false,
-        });
-      }
-    }
-  }
-
-  // Ensure all audio bitrates
-  for (const bitrate of audioBitrates) {
-    const existing = audioOnlyFormats.find((f) =>
-      f.qualityLabel.includes(`${bitrate}kbps`),
-    );
-    if (existing) {
-      finalFormats.push(existing);
-    } else {
-      // Fallback: Create a placeholder format if not found
-      const baseFormat = audioOnlyFormats[0] || {
-        filesize: 3000000,
-        audioChannels: 2,
-      };
-      finalFormats.push({
-        formatId: `placeholder-mp3-${bitrate}`,
-        extension: "mp3",
-        quality: `${bitrate}kbps`,
-        qualityLabel: `MP3 - ${bitrate}kbps`,
-        hasAudio: true,
-        hasVideo: false,
-        filesize: baseFormat.filesize,
-        audioChannels: baseFormat.audioChannels,
-      });
-    }
-  }
-
-  return finalFormats;
+  return uniqueFormats;
 }
 
 // Parse yt-dlp subtitles to our subtitle structure
@@ -586,8 +496,24 @@ export async function downloadVideo(
 
   try {
     await fs.mkdir(tempDir, { recursive: true });
+
+    // Validate formatId against cached video info
+    const videoInfo = await getVideoInfo(videoId);
+    const validFormat = videoInfo.formats.find((f) => f.formatId === formatId);
+    if (
+      !validFormat ||
+      formatId.startsWith("placeholder-") ||
+      formatId.startsWith("fallback-")
+    ) {
+      throw new Error(
+        `Invalid or placeholder formatId: ${formatId}. Please select a valid format.`,
+      );
+    }
+
+    console.log(
+      `Attempting direct download for video ${videoId} with format ${formatId}`,
+    );
     try {
-      console.log(`Attempting direct download for video ${videoId}`);
       await downloadUsingDirectMethod(
         url,
         formatId,
@@ -597,12 +523,14 @@ export async function downloadVideo(
         subtitle,
         subtitleFormat,
       );
+      console.log(`Direct download succeeded for ${videoId}`);
       return outputStream;
-    } catch (error) {
+    } catch (directError) {
       console.warn(
-        `Direct download failed for ${videoId}, trying file method:`,
-        error,
+        `Direct download failed for ${videoId}:`,
+        directError.message,
       );
+      console.log(`Attempting file-based download for ${videoId}`);
       await downloadUsingFileMethod(
         url,
         formatId,
@@ -613,18 +541,32 @@ export async function downloadVideo(
         subtitle,
         subtitleFormat,
       );
+      console.log(`File-based download succeeded for ${videoId}`);
       return outputStream;
     }
   } catch (error) {
-    console.error(`Download failed for ${videoId}:`, error);
-    outputStream.emit(
-      "error",
-      new Error(
-        "Failed to download video. Please try a different format or video.",
-      ),
+    console.error(
+      `Download failed for ${videoId} with format ${formatId}:`,
+      error,
     );
+    const errorMessage = error.message.includes("HTTP Error 403")
+      ? "YouTube restrictions prevent this download"
+      : error.message.includes("Video unavailable")
+        ? "This video is unavailable or private"
+        : error.message.includes("Sign in to confirm your age")
+          ? "This video requires age verification"
+          : "Failed to download video. Please try a different format or video.";
+    outputStream.emit("error", new Error(errorMessage));
     outputStream.end();
     return outputStream;
+  } finally {
+    // Cleanup temp dir if empty
+    try {
+      const files = await fs.readdir(tempDir);
+      if (files.length === 0) await fs.rmdir(tempDir).catch(() => {});
+    } catch (e) {
+      console.warn(`Error cleaning up temp dir ${tempDir}:`, e);
+    }
   }
 }
 
@@ -738,31 +680,38 @@ async function downloadUsingDirectMethod(
   subtitleFormat?: string,
 ): Promise<void> {
   const args = [
-      "--no-playlist",
-      "-f",
-      formatId,
-      "-o",
-      "-",
-      "--force-ipv4",
-      "--geo-bypass",
-      "--no-check-certificates",
-      "--no-warnings",
-      "--no-cache-dir",
-      "--rm-cache-dir",
-      "--cookies-from-browser", "chrome",
-      "--extract-audio",
-      "--audio-quality", "0",
-      "--format-sort", "quality",
-      "--prefer-free-formats",
-      ...Object.entries(YTDLP_CONFIG.headers).flatMap(([key, value]) => [
-        "--add-header",
-        `${key}:${value}`,
-      ]),
-      "--user-agent",
-      YTDLP_CONFIG.userAgent,
-      "--extractor-args",
-      YTDLP_CONFIG.extractorArgs,
-      url,
+    "--no-playlist",
+    "-f",
+    formatId,
+    "-o",
+    "-",
+    "--force-ipv4",
+    "--geo-bypass",
+    "--no-check-certificates",
+    "--no-warnings",
+    "--extractor-retries",
+    String(YTDLP_CONFIG.retries),
+    "--fragment-retries",
+    String(YTDLP_CONFIG.fragmentRetries),
+    "--retry-sleep",
+    String(YTDLP_CONFIG.retrySleep),
+    "--throttled-rate",
+    YTDLP_CONFIG.throttledRate,
+    "--buffer-size",
+    YTDLP_CONFIG.bufferSize,
+    "--socket-timeout",
+    String(YTDLP_CONFIG.socketTimeout),
+    "--concurrent-fragments",
+    String(YTDLP_CONFIG.concurrentFragments),
+    ...Object.entries(YTDLP_CONFIG.headers).flatMap(([key, value]) => [
+      "--add-header",
+      `${key}:${value}`,
+    ]),
+    "--user-agent",
+    YTDLP_CONFIG.userAgent,
+    "--extractor-args",
+    YTDLP_CONFIG.extractorArgs,
+    url,
   ];
 
   if (start !== undefined && end !== undefined) {
@@ -778,16 +727,10 @@ async function downloadUsingDirectMethod(
     );
   }
 
-  const { error, code } = await executeYtdlp(args);
-  if (code !== 0) {
-    const errorMessage = error.includes("HTTP Error 403")
-      ? "YouTube restrictions prevent this download"
-      : error.includes("Video unavailable")
-        ? "This video is unavailable or private"
-        : error.includes("Sign in to confirm your age")
-          ? "This video requires age verification"
-          : "Download failed";
-    throw new Error(errorMessage);
+  try {
+    await executeYtdlp(args, outputStream);
+  } catch (error) {
+    throw new Error(`Direct download failed: ${error.message}`);
   }
 }
 
@@ -841,23 +784,26 @@ async function downloadUsingFileMethod(
     );
   }
 
-  const { error, code } = await executeYtdlp(args, true);
-  if (
-    code !== 0 ||
-    !(await fs
-      .stat(tempFilePath)
-      .then((stat) => stat.size > 0)
-      .catch(() => false))
-  ) {
-    throw new Error(error || "Failed to download video to file");
+  try {
+    await executeYtdlp(args, undefined, true);
+    if (
+      !(await fs
+        .stat(tempFilePath)
+        .then((stat) => stat.size > 0)
+        .catch(() => false))
+    ) {
+      throw new Error("No data downloaded to temporary file");
+    }
+    const fileStream = await fs
+      .readFile(tempFilePath)
+      .then((data) => Readable.from(data));
+    await pipeline(fileStream, outputStream, async () => {
+      await fs
+        .unlink(tempFilePath)
+        .catch((err) => console.warn(`Error deleting ${tempFilePath}:`, err));
+    });
+  } catch (error) {
+    await fs.unlink(tempFilePath).catch(() => {});
+    throw new Error(`File download failed: ${error.message}`);
   }
-
-  const fileStream = await fs
-    .readFile(tempFilePath)
-    .then((data) => Readable.from(data));
-  await pipeline(fileStream, outputStream, async () => {
-    await fs
-      .unlink(tempFilePath)
-      .catch((err) => console.warn(`Error deleting ${tempFilePath}:`, err));
-  });
 }
