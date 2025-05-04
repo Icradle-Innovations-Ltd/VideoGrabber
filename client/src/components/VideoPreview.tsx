@@ -182,9 +182,9 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
   );
 
   return (
-    <section className="mb-8" aria-label="Video preview and download options">
-      <Card className="max-w-3xl mx-auto">
-        <CardContent className="p-4 md:p-6">
+    <section className="mb-4 sm:mb-8" aria-label="Video preview and download options">
+      <Card className="w-full bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <CardContent className="p-3 sm:p-4 md:p-6">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-8" aria-live="polite">
               <Loader2 className="h-12 w-12 animate-spin text-primary" aria-hidden="true" />

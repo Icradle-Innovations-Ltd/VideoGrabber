@@ -139,10 +139,10 @@ export function InputSection({ onFetchVideo, isLoading }: InputSectionProps) {
   };
 
   return (
-    <section className="mb-8">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold mb-2">Download YouTube Videos</h2>
-        <p className="text-accent dark:text-gray-400">
+    <section className="mb-4 sm:mb-6 md:mb-8">
+      <div className="text-center mb-4 sm:mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-red-600">Download YouTube Videos</h2>
+        <p className="text-accent/80 dark:text-gray-400 text-sm sm:text-base">
           Paste a YouTube URL to download videos for free
         </p>
       </div>

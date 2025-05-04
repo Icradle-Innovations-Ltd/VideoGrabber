@@ -1,31 +1,12 @@
 export function Footer() {
   return (
-    <footer className="bg-muted dark:bg-card py-6 mt-8">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <p className="text-accent dark:text-gray-400 text-sm mb-4 md:mb-0">
-            This tool is for personal use only. Please respect copyright laws.
-          </p>
-          <div className="flex space-x-4">
-            <a
-              href="/terms"
-              className="text-accent dark:text-gray-400 hover:text-foreground dark:hover:text-white transition-colors"
-            >
-              Terms
-            </a>
-            <a
-              href="/privacy"
-              className="text-accent dark:text-gray-400 hover:text-foreground dark:hover:text-white transition-colors"
-            >
-              Privacy
-            </a>
-            <a
-              href="/contact"
-              className="text-accent dark:text-gray-400 hover:text-foreground dark:hover:text-white transition-colors"
-            >
-              Contact
-            </a>
-          </div>
+    <footer className="py-6 border-t border-border/40 bg-background/50">
+      <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4 max-w-7xl">
+        <p className="text-sm text-accent/80">&copy; {new Date().getFullYear()} YouTube Downloader. All rights reserved.</p>
+        <div className="flex items-center gap-4 text-sm text-accent/60">
+          <Link to="/terms" className="hover:text-accent">Terms</Link>
+          <Link to="/privacy" className="hover:text-accent">Privacy</Link>
+          <Link to="/contact" className="hover:text-accent">Contact</Link>
         </div>
       </div>
     </footer>
