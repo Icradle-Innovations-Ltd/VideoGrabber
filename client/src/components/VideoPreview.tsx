@@ -268,7 +268,6 @@ export function VideoPreview({ videoInfo, isLoading, onDownload }: VideoPreviewP
                             const bRes = b.qualityLabel ? parseInt(b.qualityLabel.match(/\d+/)?.[0] || '0') : 0;
                             return bRes - aRes; // Higher resolution first
                           })
-                          .slice(0, 4) // Limit to 4 formats
                           .map((format) => (
                             <div
                               key={format.formatId}
