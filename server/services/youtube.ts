@@ -49,17 +49,25 @@ export async function getVideoInfo(videoId: string, url?: string): Promise<Video
         "--no-playlist",
         "--force-ipv4",
         "--geo-bypass",
-        "--extractor-retries", "5",
+        "--extractor-retries", "10",
         "--ignore-errors",
         "--no-check-certificates",
         "--prefer-insecure",
         "--no-warnings",
         "--skip-download",
-        "--all-formats", // Get all available formats including high quality ones
-        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "--format-sort", "res,+size,+br,+proto",
+        "--format-sort-force",
+        "--all-formats",
+        "--write-subs",
+        "--write-auto-subs",
+        "--sub-langs", "all",
+        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
         "--add-header", "Accept-Language:en-US,en;q=0.9",
-        "--mark-watched",
+        "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "--add-header", "Accept-Encoding:gzip, deflate, br",
         "--cookies-from-browser", "chrome",
+        "--cookies", "/tmp/youtube.com_cookies.txt",
+        "--mark-watched",
         videoUrl
       ]);
 
@@ -280,7 +288,7 @@ export async function getPlaylistInfo(playlistId: string): Promise<PlaylistInfo>
 
 // Parse yt-dlp formats to our format structure
 function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
-  // Standard resolution labels for consistent presentation
+  // Enhanced resolution labels with codec info
   const standardResolutions: Record<string, { height: number; label: string }> = {
     "144p": { height: 144, label: "144p" },
     "240p": { height: 240, label: "240p" },
@@ -292,6 +300,14 @@ function parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
     "2160p": { height: 2160, label: "2160p 4K" },
     "4320p": { height: 4320, label: "4320p 8K" }
   };
+
+  // Sort formats by resolution and quality
+  ytDlpFormats.sort((a, b) => {
+    const heightA = a.height || 0;
+    const heightB = b.height || 0;
+    if (heightA !== heightB) return heightB - heightA;
+    return (b.filesize || 0) - (a.filesize || 0);
+  });
   
   // Add standard audio quality labels
   const audioQualityLabels: Record<string, string> = {
