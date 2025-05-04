@@ -41,16 +41,28 @@ const utils = {
     return match ? match[1] : null;
   },
 
-  async executeYtdlp(args: string[]): Promise<{ output: string; error: string; code: number }> {
+  async executeYtdlp(args: string[], outputStream?: PassThrough): Promise<{ output?: string; error: string; code: number }> {
     return new Promise((resolve, reject) => {
       const ytDlp = spawn("yt-dlp", args);
       let outputData = "";
       let errorData = "";
 
-      ytDlp.stdout.on("data", (data) => outputData += data.toString());
-      ytDlp.stderr.on("data", (data) => errorData += data.toString());
+      ytDlp.stdout.on("data", (data) => {
+        const chunk = data.toString();
+        if (outputStream) {
+          outputStream.write(chunk);
+        } else {
+          outputData += chunk;
+        }
+      });
+
+      ytDlp.stderr.on("data", (data) => {
+        errorData += data.toString();
+        console.warn(`yt-dlp stderr: ${data.toString()}`);
+      });
+
       ytDlp.on("error", (error) => reject(new YouTubeError(`Failed to start yt-dlp: ${error.message}`)));
-      ytDlp.on("close", (code) => resolve({ output: outputData, error: errorData, code }));
+      ytDlp.on("close", (code) => resolve({ output: outputStream ? undefined : outputData, error: errorData, code }));
     });
   },
 
@@ -89,18 +101,21 @@ const formatHandler = {
         ];
 
         const { output, code } = await utils.executeYtdlp(args);
-        if (code === 0) {
-          const data = JSON.parse(output.trim().split("\n").pop() || "");
-          formats.push({
-            format_id: `audio-mp3-${bitrate}`,
-            ext: "mp3",
-            acodec: "mp3",
-            vcodec: "none",
-            format_note: `${bitrate}kbps`,
-            abr: parseInt(bitrate),
-            filesize: data.filesize || (data.duration * parseInt(bitrate) * 1000) / 8
-          });
+        if (code !== 0 || !output) {
+          console.warn(`Failed to generate ${bitrate}kbps format: No output`);
+          continue;
         }
+
+        const data = JSON.parse(output.trim().split("\n").pop() || "");
+        formats.push({
+          format_id: `audio-mp3-${bitrate}`,
+          ext: "mp3",
+          acodec: "mp3",
+          vcodec: "none",
+          format_note: `${bitrate}kbps`,
+          abr: parseInt(bitrate),
+          filesize: data.filesize || (data.duration * parseInt(bitrate) * 1000) / 8
+        });
       } catch (error) {
         console.warn(`Failed to generate ${bitrate}kbps format:`, error);
       }
@@ -111,7 +126,13 @@ const formatHandler = {
   parseFormats(ytDlpFormats: any[]): VideoInfo["formats"] {
     const standardResolutions = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p", "144p"];
     const formats = ytDlpFormats
-      .filter(format => (format.ext === "mp4" && format.vcodec !== "none") || (format.ext === "mp3" && format.acodec !== "none"))
+      .filter(format => {
+        const isMP4 = format.ext === "mp4";
+        const isMP3 = format.ext === "mp3";
+        const isVideo = format.vcodec && format.vcodec !== "none";
+        const isAudio = format.acodec && format.acodec !== "none";
+        return (isMP4 && isVideo) || (isMP3 && isAudio);
+      })
       .map(format => {
         const hasVideo = format.vcodec && format.vcodec !== "none";
         const hasAudio = format.acodec && format.acodec !== "none";
@@ -135,7 +156,19 @@ const formatHandler = {
         return heightB - heightA || (b.filesize || 0) - (a.filesize || 0);
       });
 
-    return this.ensureAllFormats(formats, standardResolutions);
+    const uniqueFormats: VideoInfo["formats"] = [];
+    const seen = new Set<string>();
+
+    for (const format of formats) {
+      const key = `${format.hasVideo ? "1" : "0"}-${format.hasAudio ? "1" : "0"}-${format.qualityLabel}-${format.extension}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueFormats.push(format);
+      }
+    }
+
+    console.log("Parsed formats:", uniqueFormats);
+    return uniqueFormats;
   },
 
   generateQualityLabel(format: any, hasVideo: boolean, hasAudio: boolean, height: number): string {
@@ -156,46 +189,6 @@ const formatHandler = {
     if (height >= 1080) return `${height}p Full HD`;
     if (height >= 720) return `${height}p HD`;
     return `${height}p`;
-  },
-
-  ensureAllFormats(formats: VideoInfo["formats"], resolutions: string[]): VideoInfo["formats"] {
-    const result = [...formats];
-
-    for (const res of resolutions) {
-      const height = parseInt(res);
-      this.ensureResolutionFormat(result, height, true);
-      this.ensureResolutionFormat(result, height, false);
-    }
-
-    return result;
-  },
-
-  ensureResolutionFormat(formats: VideoInfo["formats"], height: number, withAudio: boolean): void {
-    const exists = formats.some(f => 
-      f.hasVideo && 
-      (f.hasAudio === withAudio) && 
-      parseInt(f.qualityLabel.match(/\d+p/)?.[0] || "0") === height
-    );
-
-    if (!exists && formats.length > 0) {
-      const baseFormat = formats[0];
-      formats.push({
-        ...baseFormat,
-        formatId: `placeholder-${height}p-${withAudio ? 'audio' : 'video'}`,
-        qualityLabel: `MP4 - ${height}p${withAudio ? " with Audio" : " (Video Only)"}${this.getQualitySuffix(height)}`,
-        filesize: height * height * 60,
-        hasAudio: withAudio,
-        hasVideo: true
-      });
-    }
-  },
-
-  getQualitySuffix(height: number): string {
-    if (height >= 2160) return " 4K";
-    if (height >= 1440) return " 2K";
-    if (height >= 1080) return " Full HD";
-    if (height >= 720) return " HD";
-    return "";
   }
 };
 
@@ -236,6 +229,8 @@ async function fetchVideoInfo(videoUrl: string): Promise<VideoInfo> {
     "--dump-json",
     "--skip-download",
     "--list-formats",
+    "--format", "bestvideo+bestaudio/best",
+    "--merge-output-format", "mp4",
     "--extract-audio",
     "--audio-format", "mp3",
     "--audio-quality", "0",
@@ -246,11 +241,13 @@ async function fetchVideoInfo(videoUrl: string): Promise<VideoInfo> {
   ];
 
   const { output, error, code } = await utils.executeYtdlp(args);
-  if (code !== 0) {
+  if (code !== 0 || !output) {
     throw new YouTubeError(`yt-dlp failed with code ${code}: ${error}`, code);
   }
 
   const rawData = JSON.parse(output.trim().split("\n").pop() || "");
+  console.log(`Raw formats fetched for ${videoUrl}:`, rawData.formats);
+
   const audioFormats = await formatHandler.generateAudioFormats(videoUrl);
   const allFormats = [...(rawData.formats || []), ...audioFormats];
 
@@ -283,7 +280,7 @@ async function getVideoWithPlaylistInfo(videoId: string, videoUrl: string, playl
     `https://www.youtube.com/playlist?list=${playlistId}`
   ]);
 
-  if (code !== 0) {
+  if (code !== 0 || !output) {
     throw new YouTubeError(`Failed to get playlist info: ${error}`, code);
   }
 
@@ -320,24 +317,33 @@ export async function downloadVideo(options: DownloadOptions): Promise<Readable>
     }
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
-    
-    // First check if format is available
-    const { output: formatList } = await utils.executeYtdlp([
-      ...utils.getCommonArgs(url),
-      "--list-formats"
-    ]);
 
-    // Check if requested format is available
-    if (!formatList.includes(formatId)) {
-      throw new Error(`Format ${formatId} is not available. Available formats:\n${formatList}`);
+    // Validate formatId against fetched formats
+    const videoInfo = await getVideoInfo(videoId);
+    const validFormat = videoInfo.formats.find(f => f.formatId === formatId);
+    if (!validFormat || formatId.startsWith("placeholder-")) {
+      throw new Error(`Invalid formatId: ${formatId}. Please select a valid format.`);
     }
 
-    // Handle format selection with fallbacks
+    // Check if this is a custom audio format
+    const audioFormatMatch = formatId.match(/^audio-mp3-(\d+)$/);
+    const isAudioFormat = audioFormatMatch !== null;
+    const bitrate = audioFormatMatch ? audioFormatMatch[1] : null;
+
+    // If not an audio format, validate against available formats
+    if (!isAudioFormat) {
+      const { output: formatList } = await utils.executeYtdlp([
+        ...utils.getCommonArgs(url),
+        "--list-formats"
+      ]);
+
+      if (!formatList || !formatList.includes(formatId)) {
+        throw new Error(`Format ${formatId} is not available. Available formats:\n${formatList || 'No formats found'}`);
+      }
+    }
+
     const args = [
       ...utils.getCommonArgs(url),
-      "-f", formatId,
-      "--format-sort", "quality",
-      "--merge-output-format", "mp4",
       "-o", "-",
       "--fragment-retries", String(YTDLP_CONFIG.fragmentRetries),
       "--retry-sleep", String(YTDLP_CONFIG.retrySleep),
@@ -346,6 +352,22 @@ export async function downloadVideo(options: DownloadOptions): Promise<Readable>
       "--concurrent-fragments", String(YTDLP_CONFIG.concurrentFragments)
     ];
 
+    if (isAudioFormat && bitrate) {
+      // For audio formats, instruct yt-dlp to extract audio at the specified bitrate
+      args.push(
+        "--extract-audio",
+        "--audio-format", "mp3",
+        "--audio-quality", bitrate
+      );
+    } else {
+      // For video formats, use the formatId directly
+      args.push(
+        "-f", formatId,
+        "--format-sort", "quality",
+        "--merge-output-format", "mp4"
+      );
+    }
+
     if (start !== undefined && end !== undefined) {
       args.push("--download-sections", `*${start}-${end}`);
     }
@@ -353,22 +375,15 @@ export async function downloadVideo(options: DownloadOptions): Promise<Readable>
       args.push("--write-subs", "--sub-langs", subtitle, "--sub-format", subtitleFormat);
     }
 
-    const ytDlp = spawn("yt-dlp", args);
-    ytDlp.stdout.pipe(outputStream);
-    ytDlp.stderr.on("data", (data) => console.warn(`yt-dlp warning: ${data}`));
-
-    await new Promise((resolve, reject) => {
-      ytDlp.on("close", (code) => {
-        if (code === 0) resolve(null);
-        else reject(new Error(`Download failed with code ${code}`));
-      });
-      ytDlp.on("error", reject);
-    });
-
+    await utils.executeYtdlp(args, outputStream);
     return outputStream;
   } catch (error) {
     console.error(`Download failed for ${videoId}:`, error);
-    outputStream.emit("error", new Error("Download failed. Please try a different format or video."));
+    const errorMessage = error.message.includes("HTTP Error 403") ? "YouTube restrictions prevent this download" :
+      error.message.includes("Video unavailable") ? "This video is unavailable or private" :
+      error.message.includes("Sign in to confirm your age") ? "This video requires age verification" :
+      "Download failed. Please try a different format or video.";
+    outputStream.emit("error", new Error(errorMessage));
     outputStream.end();
     return outputStream;
   }
