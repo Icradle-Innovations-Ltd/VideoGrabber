@@ -335,9 +335,7 @@ export async function downloadVideo(options: DownloadOptions): Promise<Readable>
     // Handle format selection with fallbacks
     const args = [
       ...utils.getCommonArgs(url),
-      "-f", isAudioOnly ? 
-        "bestaudio/best --extract-audio --audio-format mp3 --audio-quality 0" : 
-        "18/best[height<=720]/bestaudio",
+      "-f", formatId,
       "--format-sort", "quality",
       "--merge-output-format", "mp4",
       "-o", "-",
