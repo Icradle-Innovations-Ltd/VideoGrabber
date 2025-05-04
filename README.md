@@ -63,9 +63,28 @@ A modern, full-featured web application for downloading YouTube videos and playl
 npm install
 ```
 
-3. System dependencies (pre-installed on Replit):
-- yt-dlp
-- ffmpeg
+3. System dependencies:
+
+**Option 1: Automatic setup (Windows only)**
+```bash
+npm run setup
+```
+This script will automatically download and set up yt-dlp.exe and ffmpeg.
+
+**Option 2: Manual setup**
+- Download [yt-dlp.exe](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe) and place it in the root directory
+- Download [ffmpeg](https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip), extract it, and place the `ffmpeg` folder in the root directory
+
+Note: These files are in .gitignore because they are large binary files. You need to download them separately.
+
+The application will create the following directory structure for downloads:
+```
+downloads/
+├── VideoWithAudio/   # Videos with audio
+├── VideoOnly/        # Video-only files
+├── AudioOnly/        # Audio-only files
+└── SubtitlesOnly/    # Subtitle files
+```
 
 4. Start the development server:
 ```bash
@@ -74,6 +93,7 @@ npm run dev
 
 ## Usage
 
+### Main Downloader
 1. Paste a YouTube URL (video or playlist)
 2. Select desired format and quality
 3. Choose download options:
@@ -82,6 +102,19 @@ npm run dev
    - Subtitles/Captions
    - Trim video (optional)
 4. Click download and wait for completion
+
+### CLI Downloader
+The application also includes a CLI-based downloader that uses yt-dlp directly:
+1. Navigate to the CLI Downloader page from the navigation menu
+2. Enter a YouTube URL
+3. Select download type:
+   - Video with Audio (MP4)
+   - Video Only (MP4)
+   - Audio Only (MP3)
+   - Subtitles Only
+4. Choose quality options
+5. Click "Start Download"
+6. View downloaded files in the "Downloaded Files" tab
 
 ## Environment
 
@@ -95,6 +128,10 @@ npm run dev
 - `GET /api/videos/info`: Get video information
 - `POST /api/videos/download`: Download video/audio
 - `GET /api/playlists/info`: Get playlist information
+- `POST /api/cli-download/start`: Start a download using yt-dlp
+- `GET /api/cli-download/files`: Get list of downloaded files
+- `GET /api/cli-download/files/:category/:filename`: Download a specific file
+- `GET /api/formats`: Get available formats for a video
 
 ## Development
 

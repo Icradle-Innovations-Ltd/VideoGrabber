@@ -4,3 +4,8 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Large binary files
+ffmpeg/
+yt-dlp.exe
+downloads/

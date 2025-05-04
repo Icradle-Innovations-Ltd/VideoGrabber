@@ -17,6 +17,7 @@ export default function Navigation() {
         <div className="flex items-center justify-between">
           <div className="flex gap-4">
             <Link href="/">Home</Link>
+            <Link href="/downloader">CLI Downloader</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/contact">Contact</Link>

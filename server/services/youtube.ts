@@ -42,7 +42,14 @@ async function executeYtdlp(
   outputToFile = false,
 ): Promise<{ output: string; error: string; code: number }> {
   return new Promise((resolve, reject) => {
-    const ytDlp = spawn("yt-dlp", args);
+    // Use the full path to yt-dlp
+    const ytDlpCommand = process.platform === 'win32' ? 
+      path.join(process.cwd(), 'yt-dlp.exe') : 
+      path.join(process.cwd(), 'yt-dlp');
+    
+    console.log(`Executing yt-dlp with command: ${ytDlpCommand} ${args.join(' ')}`);
+    
+    const ytDlp = spawn(ytDlpCommand, args);
     let outputData = "";
     let errorData = "";
 
@@ -55,10 +62,46 @@ async function executeYtdlp(
     });
 
     ytDlp.on("error", (error) => {
+      console.error(`Failed to start yt-dlp: ${error.message}`);
       reject(new Error(`Failed to start yt-dlp: ${error.message}`));
     });
 
     ytDlp.on("close", (code) => {
+      resolve({ output: outputData, error: errorData, code });
+    });
+  });
+}
+
+// Helper function to execute ffmpeg with common arguments
+async function executeFfmpeg(
+  args: string[],
+): Promise<{ output: string; error: string; code: number }> {
+  return new Promise((resolve, reject) => {
+    // Use the full path to ffmpeg
+    const ffmpegCommand = process.platform === 'win32' ? 
+      path.join(process.cwd(), 'ffmpeg', 'bin', 'ffmpeg.exe') : 
+      path.join(process.cwd(), 'ffmpeg', 'bin', 'ffmpeg');
+    
+    console.log(`Executing ffmpeg with command: ${ffmpegCommand} ${args.join(' ')}`);
+    
+    const ffmpeg = spawn(ffmpegCommand, args);
+    let outputData = "";
+    let errorData = "";
+
+    ffmpeg.stdout.on("data", (data) => {
+      outputData += data.toString();
+    });
+
+    ffmpeg.stderr.on("data", (data) => {
+      errorData += data.toString();
+    });
+
+    ffmpeg.on("error", (error) => {
+      console.error(`Failed to start ffmpeg: ${error.message}`);
+      reject(new Error(`Failed to start ffmpeg: ${error.message}`));
+    });
+
+    ffmpeg.on("close", (code) => {
       resolve({ output: outputData, error: errorData, code });
     });
   });
@@ -581,16 +624,31 @@ export async function downloadVideo(
   const tempDir = path.join(os.tmpdir(), "youtube-downloader");
   const tempFilePath = path.join(
     tempDir,
-    `${videoId}_${formatId}_${Date.now()}.temp`,
+    `${videoId}_${formatId || 'best'}_${Date.now()}.temp`,
   );
 
   try {
     await fs.mkdir(tempDir, { recursive: true });
+    
+    // First, get available formats for this video
+    console.log(`Getting available formats for video ${videoId}`);
+    const formatArgs = [
+      "--list-formats",
+      "--no-playlist",
+      "--force-ipv4",
+      "--geo-bypass",
+      url
+    ];
+    
+    const { output: formatOutput } = await executeYtdlp(formatArgs);
+    console.log(`Available formats for ${videoId}:\n${formatOutput}`);
+    
+    // Try direct download first
     try {
       console.log(`Attempting direct download for video ${videoId}`);
       await downloadUsingDirectMethod(
         url,
-        formatId,
+        "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", // Use best format for direct download
         outputStream,
         start,
         end,
@@ -605,7 +663,7 @@ export async function downloadVideo(
       );
       await downloadUsingFileMethod(
         url,
-        formatId,
+        "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best", // Use best format for file download
         tempFilePath,
         outputStream,
         start,
@@ -737,10 +795,13 @@ async function downloadUsingDirectMethod(
   subtitle?: string,
   subtitleFormat?: string,
 ): Promise<void> {
+  // If formatId is not specified or invalid, use the best available format
+  const format = formatId || "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
+  
   const args = [
     "--no-playlist",
     "-f",
-    formatId,
+    format,
     "-o",
     "-",
     "--force-ipv4",
@@ -809,10 +870,13 @@ async function downloadUsingFileMethod(
   subtitle?: string,
   subtitleFormat?: string,
 ): Promise<void> {
+  // If formatId is not specified or invalid, use the best available format
+  const format = formatId || "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best";
+  
   const args = [
     "--no-playlist",
     "-f",
-    formatId,
+    format,
     "--merge-output-format",
     "mp4",
     "-o",
@@ -829,9 +893,17 @@ async function downloadUsingFileMethod(
     "--retry-sleep",
     String(YTDLP_CONFIG.retrySleep),
     "--throttled-rate",
-    "100K",
+    YTDLP_CONFIG.throttledRate,
     "--buffer-size",
-    "16K",
+    YTDLP_CONFIG.bufferSize,
+    "--concurrent-fragments",
+    String(YTDLP_CONFIG.concurrentFragments),
+    "--user-agent",
+    YTDLP_CONFIG.userAgent,
+    ...Object.entries(YTDLP_CONFIG.headers).flatMap(([key, value]) => [
+      "--add-header",
+      `${key}:${value}`,
+    ]),
     url,
   ];
 
