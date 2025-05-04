@@ -645,13 +645,19 @@ async function downloadUsingDirectMethod(
       "--no-check-certificates",
       "--prefer-insecure",
       "--no-warnings",
-      "--extractor-retries", "3",
+      "--extractor-retries", "5",
+      "--fragment-retries", "5",
+      "--retry-sleep", "2",
+      "--throttled-rate", "100K",
+      "--buffer-size", "16K",
+      "--no-part",
+      "--socket-timeout", "30",
       "--add-header", "Accept-Language:en-US,en;q=0.9",
-      "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "--add-header", "Accept-Encoding:gzip, deflate",
-      "--add-header", "User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      "--extractor-args", "youtube:player_client=android,web",
+      "--add-header", "User-Agent:Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "--user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "--extractor-args", "youtube:player_client=android,web;include_live_dash=1",
     ];
 
     // Add trim options if present
@@ -745,13 +751,19 @@ async function downloadUsingFileMethod(
       "--no-check-certificates",
       "--prefer-insecure",
       "--no-warnings",
-      "--extractor-retries", "3",
+      "--extractor-retries", "5",
+      "--fragment-retries", "5",
+      "--retry-sleep", "2",
+      "--throttled-rate", "100K",
+      "--buffer-size", "16K",
+      "--no-part",
+      "--socket-timeout", "30",
       "--add-header", "Accept-Language:en-US,en;q=0.9",
-      "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "--add-header", "Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "--add-header", "Accept-Encoding:gzip, deflate",
-      "--add-header", "User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-      "--extractor-args", "youtube:player_client=android,web"
+      "--add-header", "User-Agent:Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "--user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "--extractor-args", "youtube:player_client=android,web;include_live_dash=1"
     ];
 
     // Add trim options if present
