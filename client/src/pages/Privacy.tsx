@@ -1,9 +1,13 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 
+import Navigation from "@/components/Navigation";
+
 export default function Privacy() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <Navigation />
+      <div className="container mx-auto px-4 py-8">
       <Card>
         <CardContent className="pt-6">
           <h1 className="text-2xl font-bold mb-4">Privacy Policy</h1>

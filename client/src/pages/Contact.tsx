@@ -4,9 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+import Navigation from "@/components/Navigation";
+
 export default function Contact() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <Navigation />
+      <div className="container mx-auto px-4 py-8">
       <Card>
         <CardContent className="pt-6">
           <h1 className="text-2xl font-bold mb-4">Contact Us</h1>
