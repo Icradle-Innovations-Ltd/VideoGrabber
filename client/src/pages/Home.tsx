@@ -11,6 +11,7 @@ import { PlaylistPreview } from "@/components/PlaylistPreview";
 import { DownloadProgress } from "@/components/DownloadProgress";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { Footer } from "@/components/Footer";
+import Navigation from "@/components/Navigation";
 
 // Define extended VideoInfo type that includes playlist properties
 interface PlaylistItem {
@@ -257,6 +258,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <Navigation />
       <Header />
       
       <main className="flex-grow container mx-auto px-4 md:px-6 py-8">
