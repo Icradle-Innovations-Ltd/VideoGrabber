@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 
+const buildDate = new Date().toLocaleDateString();
+
 export default function Terms() {
   return (
     <>
@@ -12,7 +14,7 @@ export default function Terms() {
           <CardContent className="pt-6">
             <h1 className="text-2xl font-bold mb-4">Terms of Service</h1>
             <div className="prose dark:prose-invert">
-              <p>Last updated: {new Date().toLocaleDateString()}</p>
+              <p>Last updated: {buildDate}</p>
               <h2>1. Terms</h2>
               <p>By accessing this website, you agree to be bound by these terms of service and agree that you are responsible for compliance with any applicable local laws.</p>
               <h2>2. Use License</h2>

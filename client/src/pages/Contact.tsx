@@ -14,7 +14,7 @@ export default function Contact() {
         <Card>
           <CardContent className="pt-6">
             <h1 className="text-2xl font-bold mb-4">Contact Us</h1>
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
                 <Input type="email" id="email" placeholder="your@email.com" />
